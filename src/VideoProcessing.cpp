@@ -211,7 +211,7 @@ int main() {
 					while (true) {
 						video >> frame;
 						if (frame.empty()) {destroyAllWindows();break;}
-						resize(frame, frame, Size(frame.cols/2, frame.rows/2));
+						//resize(frame, frame, Size(frame.cols/2, frame.rows/2));
 						namedWindow("Watermarked Image", WINDOW_AUTOSIZE);
 						imshow("Watermarked Image", applyWatermark(frame, "text", text));
 						if (waitKey(10) == 27) {destroyAllWindows();break;};
@@ -224,13 +224,12 @@ int main() {
 					while (true) {
 						video >> frame;
 						if (frame.empty()) {destroyAllWindows();break;};
-						resize(frame, frame, Size(frame.cols/2, frame.rows/2));
+						//resize(frame, frame, Size(frame.cols/2, frame.rows/2));
 						namedWindow("Watermarked Image", WINDOW_AUTOSIZE);
 						imshow("Watermarked Image", applyWatermark(frame, "image", filepath));
 						if (waitKey(10) == 27) {destroyAllWindows();break;};
 					}
 				}
-				
 				break;
 			}
 			case 2:
@@ -369,59 +368,87 @@ int main() {
 			}
 			case 10: {
 				video = VideoCapture("resources/ducks_take_off_422_720p50.y4m");
+				int size, i, j, n, height, width;
+				Mat py, pu, pv;
+				Mat r, g, b, finished, finishedImg;
+				vector<Mat> yuvChannels, result;
 				while (true) {
 					Mat frame;
-					vector<Mat> yuvChannels(3);
+					//vector<Mat> yuvChannels(3);
 
 					video >> frame;
 					if (frame.empty()) {destroyAllWindows();break;};
 					// Begin processing frame
-					int height = frame.rows;
-					int width = frame.cols;
-					float y, u, v, r, g, b;
-					Mat py(height, width, CV_8UC1);
-					Mat pu(height/2, width/2, CV_8UC1);
-					Mat pv(height/2, width/2, CV_8UC1);
-					int i, j;
-					int size = height*width;
-					split(frame, yuvChannels);
-					cout << yuvChannels[1].size();
+					height = frame.rows;
+					width = frame.cols;
 					/*
-					for (i = 0;i<height;i++){
-						for (j = 0; j<width; j++){
+					// YUV444 to RGB
+					Mat r, g, b, finishedImg;
+					vector<Mat> channels, result;
+					split(frame, channels);
+
+					r = channels[0] + 1.140*channels[2];
+					g = channels[0] - 0.395*channels[1] - 0.581*channels[2];
+					b = channels[0] + 2.032*channels[1];
+
+					result.push_back(r);
+					result.push_back(g);
+					result.push_back(b);
+					merge(result, finishedImg);
+
+					imshow("Resulting Image", finishedImg);
+					if (waitKey(10) == 27) {destroyAllWindows();break;};
+					// -------------
+					*/
+					yuvChannels.clear();
+					py = Mat::zeros(height, width, CV_8UC1);
+					pu = Mat::zeros(height, width, CV_8UC1);
+					pv = Mat::zeros(height, width, CV_8UC1);
+					finished = Mat::zeros(height, width, CV_8UC3);
+					finishedImg = Mat::zeros(height, width, CV_8UC3);
+
+					i, j, n;
+					size = height*width;
+					split(frame, yuvChannels);
+					for (i = 0;i<height-1;i++){
+						for (j = 0; j<width-1; j++){
 							py.at<float>(i,j) = frame.at<float>(i,j);
-						}l, U and V s
+						}
 					}
 
-					for (i = 0;i<height;i++){
-						for (j = 1; j<width; j+=2){
-							py.at<float>(i,j) = frame.at<float>(i,j);
+					for (i = 0;i<height-1;i++){
+						for (j = 0, n = 1; j<width-1;n+=3, j+=4){
+							pu.at<float>(i,n) = frame.at<float>(i,j);
+							pu.at<float>(i,n+1) = frame.at<float>(i,j);
 						}
-					}*/
+					}
 
-					/*for (int h=0;h<height;h++){
-						for (int w;w<width;w++){
-							y = frame[h*height+w];
-							u = frame[(int)(height*width+(h/2)*(width/2)+w/2)];
-							v = frame[(int)(height*width*1.25+(h/2)*(width/2)+w/2)];
-
-							r = y + 1.402 * (v - 128);
-							g = y - 0.344 * (u - 128) - 0.714 * (v - 128);
-							b = y + 1.772 * (u - 128);
-
-							if (r < 0){ r = 0; } 
-							if (r > 255 ){ r = 255; } 
-							if (g < 0){ g = 0; } 
-							if (g > 255) { g = 255; } 
-							if (b < 0){ b = 0; }
-							if (b > 255) { b = 255; }
-							cvSet2D(img1, i, j,cvScalar(B,G,R));
+					for (i = 0;i<height-1;i++){
+						for (j = 3, n = 2; j<width-1;n+=3, j+=4){
+							pv.at<float>(i,n) = frame.at<float>(i,j);
+							pv.at<float>(i,n+1) = frame.at<float>(i,j);
 						}
-					}*/
-					break;
+					}
+					// vector<Mat> channels;
+					//channels.push_back(pv);
+					//channels.push_back(pu);
+					//channels.push_back(py);
+
+					// merge(channels, finished);
+
+					r = py + 1.140*pv;
+					g = py - 0.395*pu - 0.581*pv;
+					b = py + 2.032*pu;
+
+					result.push_back(r);
+					result.push_back(g);
+					result.push_back(b);
+					
+					merge(result, finishedImg);
+					
 					// ------
 					namedWindow("YUV2BGR Image", WINDOW_AUTOSIZE);
-					imshow("YUV2BGR Image", frame);
+					imshow("YUV2BGR Image", finishedImg);
 					if (waitKey(10) == 27) {destroyAllWindows();break;};
 				}
 				break;
