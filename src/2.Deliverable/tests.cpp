@@ -6,53 +6,70 @@
 using namespace std;
 
 int main( int argc, char** argv) {
-	/*
-	// Test print 8 bits: 10101100
-	unsigned char buff;
-	int inBit;
-	int bitCount = 0;
-
-	while (true) {
-		cin >> inBit;
-		//if (inBit)
-		buff |= (inBit<<bitCount);
-		bitCount++;
-		
-		if (bitCount == 8) {
-			bitset<8> x(buff);
-			cout << x;
-			cout << '\n';
-			buff = 00000000;
-			bitCount = 0;
-			break;
-		}
-	}*/
 	BitStream bs;
-	bs.setOutputFile("Whatever.dat");
-	bs.setInputFile("Whatever.dat");
-	//bs.readNBits(20);
-	cout << bs.checkFileSize() << "\n";
-	/*bs.writeBit(0);
+	bs.setOutputFile("BinaryFile.bin");
+	bs.setInputFile("BinaryFile.bin");
+
+	/*bs.writeStr("Hello World!");
+	vector<int> v = bs.readNBits(20);
+	for (int i = 0; i<v.size(); i++)
+		cout << v[i];
+
+	cout << "\n";*/
+	//bs.writeNBits(10101010);
+	/*int counter = 0;
+	while (true) {
+		counter++;
+		cout << bs.readBit();
+		if (counter == 10)
+			break;
+	}*/
+
+	/*bs.writeBit(1);
+	bs.writeBit(1);
 	bs.writeBit(0);
-	bs.writeBit(1);
-	bs.writeBit(1);
-	bs.writeBit(1);
+	bs.writeBit(0);
+	bs.writeBit(1);	
 	bs.writeBit(0);
 	bs.writeBit(0);
 	bs.writeBit(1);
 
-	bs.writeBit(0);
-	bs.writeBit(0);
-	bs.writeBit(1);
-	bs.writeBit(1);
-	bs.writeBit(1);
-	bs.writeBit(0);
-	bs.writeBit(0);
-	bs.writeBit(1);*/
+	bs.writeNBits(11001001);
+
+	bs.closeOutputFile();*/
+
+	for (int i = 0; i<5; i++){
+		cout << bs.readBit();
+	}
+
+	vector<int> v = bs.readNBits(3);
+	for (int i = 0; i<v.size(); i++)
+		cout << v[i];
+	cout << "\n";
 	
+	v = bs.readNBits(8);
+	for (int i = 0; i<v.size(); i++)
+		cout << v[i];
+	cout << "\n";
+
 	//bs.writeNBits(1110101111);
 	//bs.writeStr("Hello World!");
-	//bs.setInputFile("Whatever.dat");
-	//bs.readFile();
+	//bs.setInputFile("Whatever.bin");
+	/*
+	vector<int> v = bs.readNBits(3);
+	for (int i = 0; i<v.size(); i++)
+		cout << v[i];
+
+	cout << "\n";
+	cout << bs.readBit();
+	cout << bs.readBit();
+	cout << "\n";
+
+	v = bs.readNBits(3);
+	for (int i = 0; i<v.size(); i++)
+		cout << v[i];
+	cout << "\n";
+	*/
+	
 	return 0;
 }
