@@ -38,15 +38,16 @@ class BitStream {
 		*	\param file Input file path
 		*/
 		void setInputFile(string file) {
+			eof = false;
+			input_file.clear();
+			input_file.seekg(0, std::ios::beg);
 			input_file.open(file, ios::binary | ios::in);
 		}
 
 		void closeOutputFile() {
 			if (bitCount != 0) {
-				output_file << buff;
-				output_file.flush();
-				bitCount = 0;
 				flushBuffer();
+				bitCount = 0;
 			}
 			output_file.close();
 		}
@@ -65,18 +66,17 @@ class BitStream {
 		*/
 		void writeBit(int bit) {
 			if (!output_file.is_open()){
-				cout << "No output file is currently opened.\n";
+				cout << "No output file is currently open.\n";
 				return;
 			}
-			
-			buff = ((buff>>1) | (bit<<7));
+			buff = buff>>1;
+			buff |= (bit<<7);
 			bitCount++;
 
 			if (bitCount == 8) {
 				output_file << buff;
 				output_file.flush();
 				bitCount = 0;
-				flushBuffer();
 			}
 		}
 
@@ -86,18 +86,49 @@ class BitStream {
 		*
 		*	\param bits Bits (0s and 1s) that will be written
 		*/
-		void writeNBits(unsigned long long int bits) {
+		void writeNBits(int number, int nBits) {
 			if (!output_file.is_open()){
-				cout << "No output file is currently opened.\n";
+				cout << "No output file is currently open.\n";
 				return;
 			}
-			int nBits = floor(log10(bits))+1;
+
+			int nZeros = __builtin_clz(number);
+			//cout << "\nnZeros:" << nZeros << "\n";
+			int sizeNumber = 32 - __builtin_clz(number);
+			//cout << "\nsizeNumber:" << sizeNumber << "\n";
+			int n;
+
+			if (sizeNumber > nBits) {
+				cout << "Número insuficiente de bits.\n";
+				return;
+			}
+
+			int nZerosPad = nBits-sizeNumber;
+			//cout << "\nnZerosPad:" << nZerosPad << "\n";
+			for (n = 0; n<nZerosPad; n++) {
+				writeBit(0);
+			}
+
+			for (n = sizeNumber-1; n>=0; n--) {
+				/*if (bitCount == 8) {
+					cout << "\n 8 Bits!\n";
+					bitset<8> x(buff);
+					cout << x << "\n"; 
+
+				}*/
+				//bitset<sizeof(sizeNumber)> x(number);
+				//cout << "\nAqui:" << x << "\n"; 
+				//cout << (1 & (number>>n)) << "\n";
+				writeBit(1 & (number>>n));
+			}
+			
+			/*int Bits = floor(log10(nBits))+1;
 			unsigned long long int aux;
 
 			for (int n = 0; n < nBits; n++) {
-				aux = bits / pow(10, nBits-n-1);
+				aux = nBits / pow(10, Bits-n-1);
 				writeBit(aux%10);
-			}
+			}*/
 		}
 
 		/*! \fn flushBuffer
@@ -106,8 +137,13 @@ class BitStream {
 		*/
 		void flushBuffer() {
 			
-			for (int n = 0;n<8; n++) {
-				buff &= 0;
+			while(bitCount) {
+				//cout << "\nWritting bit 0...\n";
+				//bitset<8> x(buff);
+				//cout << "Before:" << x << "\n";
+				writeBit(0);
+				//bitset<8> y(buff);
+				//cout << "After:" << y << "\n";				
 			}
 		}
 		/*----------------------------------------------------------*/
@@ -119,6 +155,11 @@ class BitStream {
 		*	\return returns 0 or 1 based on bit value
 		*/
 		unsigned char readBit() {
+			if (!input_file.is_open()){
+				cout << "No input file is currently open.\n";
+				return 0;
+			}
+
 			if (inBitCount == 8) {
 				input_file.read(reinterpret_cast<char*>(&readBuff), sizeof(readBuff));
 				if (input_file.eof()){
@@ -130,7 +171,6 @@ class BitStream {
 			}
 			unsigned char bit = 1 & readBuff;
 			readBuff = readBuff >> 1;
-
 			inBitCount++;
 			return bit;
 		}
@@ -143,6 +183,11 @@ class BitStream {
 		*	\return returns a vector with size nBits that has read bits
 		*/
 		unsigned int readNBits(int nBits) {
+			if (!input_file.is_open()){
+				cout << "No input file is currently open.\n";
+				return 0;
+			}
+
 			unsigned char bit;
 
 			if (!eof){
@@ -154,7 +199,6 @@ class BitStream {
 						result |= bit;
 						result = result<<1;
 					} else {
-						cout << "\nNum: " << inBitCount;
 						result = result>>1;
 						return result;
 					}
@@ -162,7 +206,7 @@ class BitStream {
 				result = result>>1;
 				return result;
 			} else {
-				cout << "\nEnd of File.";
+				//cout << "\nEnd of File.";
 				return -1;
 			}
 		}
@@ -194,6 +238,7 @@ class BitStream {
 		*
 		*/
 		void resetRead() {
+			eof = false;
 			input_file.clear();
 			input_file.seekg(0, std::ios::beg);
 		}
