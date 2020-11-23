@@ -6,12 +6,14 @@
 using namespace std;
 
 int main( int argc, char** argv) {
+	/************************************
 	BitStream bs;
 
 	bs.setOutputFile("BinaryFile.bin");
 	bs.setInputFile("BinaryFile.bin");
 
-	/*bs.writeNBits(5,8);
+	
+	bs.writeNBits(5,8);
 	bs.writeNBits(6,8);
 	bs.writeNBits(10,5);
 	bs.writeNBits(20,22);
@@ -23,19 +25,23 @@ int main( int argc, char** argv) {
 	cout << bs.readNBits(8) << "\n";
 	cout << bs.readNBits(5) << "\n";
 	cout << bs.readNBits(22) << "\n";
-	cout << bs.readNBits(2) << "\n";*/
+	cout << bs.readNBits(2) << "\n";
+	************************************/
 
-	Golomb g("encoded.bin", 4);
+	/*****************************
+	Golomb g("encoded.bin", 15);
 	for ( int n = 0; n<=15; n++){
-		bs.writeNBits(n, 8);
+		//bs.writeNBits(n, 8);
 		g.encode(n);
 	}
+	//g.encode(23);
 
 	g.finishEncoding();
 	
 	g.decode();
+	******************************/
 
-
+	/******************************
 	Golomb g2("encoded2.bin", 3);
 
 	g2.encode(240);
@@ -43,15 +49,13 @@ int main( int argc, char** argv) {
 	g2.finishEncoding();
 	
 	g2.decode();
+	******************************/
 
-	/*for ( int n = 0; n<=15; n++){
-		bs.writeNBits(n, 8);
-		g2.encode(n);
-	}
-
-	g2.finishEncoding();
+	/******************************
+	Golomb g("encoded.bin", 23);
 	
-	g2.decode();*/
-
-
+	g.encode(1235);
+	g.finishEncoding();
+	g.decode();
+	******************************/
 }

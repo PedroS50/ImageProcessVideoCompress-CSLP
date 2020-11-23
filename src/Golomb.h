@@ -42,6 +42,7 @@ class Golomb {
 
 			for (int i = 0; i<q; i++) {
 				bitStream.writeBit(1);
+				
 			}
 
 			bitStream.writeBit(0);
@@ -49,57 +50,20 @@ class Golomb {
 			if (m%2 == 0) {
 				k = log2(m);
 				bitStream.writeNBits(r, k);
+
 			} else {
 				int b = ceil(log2(m));
 
-				if (r < b)
-					k = b - 1;
-				else
-					k = b;
+				if (r < pow(2, b)-m) {
+					bitStream.writeNBits(r, b-1);
 
-				int sizeNumber = 32 - __builtin_clz(r+b);
-				
-				if (sizeNumber>k)
-					for (int n = 0; n<k; n++)
-						bitStream.writeBit(1);
-				else
-					bitStream.writeNBits(r+b, k);
+				} else {
+					bitStream.writeNBits(r+pow(2, b)-m, b);
+
+				}
 			}			
 
 		}
-		
-		/*
-		void encodeList(int numArray[], int size) {
-			BitStream bitStream;
-			bitStream.setOutputFile(file_path);
-			
-			int k = log2(m);
-
-			bitStream.writeNBits(k, 8);
-
-			signed int num;
-			for (int n = 0; n < size; n++){
-				num = numArray[n];
-
-				int q, r;
-
-				q = num/m;
-				//cout << "q = " << num << " / " << m << " = " << q << "\n";
-				r = num%m;
-				//cout << "r = " << num << " % " << m << " = " << r << "\n";
-
-				for (int i = 0; i<q; i++) {
-					bitStream.writeBit(1);
-				}
-
-				bitStream.writeBit(0);
-
-				bitStream.writeNBits(r, k);
-			}
-
-			bitStream.closeOutputFile();
-		}
-		*/
 
 		/*! \fn decode
 		*	\brief decode an encoded file
@@ -125,13 +89,15 @@ class Golomb {
 
 				while (true) {
 					bit = bitStream.readBit();
-					//cout << "\n" << (0|bit) << "\n";
+
 					if ((bit & 1) == 0) 
 						break;
 					q++;
 				}
+
 				if (bitStream.getEOF())
 					break;
+
 				if (m%2 == 0) {
 					k = log2(m);
 					r = bitStream.readNBits(k);
@@ -139,16 +105,13 @@ class Golomb {
 
 				else {
 					b = ceil(log2(m));
-					k = pow(2, b)-m;
-					r = bitStream.readNBits(b);
+					r = bitStream.readNBits(b-1);
 
-					if (r < k) {
+					if (r < pow(2, b)-m) {
 						cout << "\nResultado: " << q*m+r << "\n";
-
 					} else {
 						int val = (bitStream.readBit()&1);
-						//cout << "\nAqui: " << val;
-						cout << "\nResultado: " << q*m + ((r<<1)&val) - k+1 << "\n";
+						cout << "\nResultado: " << q*m + ( 2*r+val ) - pow(2, b)+m << "\n";
 					}
 				}
 
