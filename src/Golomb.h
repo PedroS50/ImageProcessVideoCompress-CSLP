@@ -28,8 +28,8 @@ class Golomb {
 			
 			bitStream.setOutputFile(file_path);
 			bitStream.writeNBits(value, 8);
-			bitStream.writeNBits(w, 12);
 			bitStream.writeNBits(h, 12);
+			bitStream.writeNBits(w, 12);
 			bitStream.writeNBits(nF, 16);
 		}
 
@@ -76,7 +76,6 @@ class Golomb {
 
 				}
 			}
-			cout << "Success!" << endl;	
 
 		}
 
@@ -103,7 +102,6 @@ class Golomb {
 					break;
 
 				signal = bitStream.readBit() & 1;
-				cout << signal << endl;
 
 				while (true) {
 					bit = bitStream.readBit();
@@ -159,23 +157,20 @@ class Golomb {
 			unsigned char bit;
 
 			m = bitStream.readNBits(8);
-			width = bitStream.readNBits(12);
 			height = bitStream.readNBits(12);
+			width = bitStream.readNBits(12);
 			frameCount = bitStream.readNBits(16);
-			cv::Mat frame = cv::Mat::zeros(width, height, CV_8UC3);
 
 			//cout << "\nSeparador\n";
 
 			for (int frameN = 0; frameN < frameCount; frameN++) {
-				frame = cv::Mat::zeros(width, height, CV_8UC3);
 				for (int ch = 0; ch < 3; ch++) {
-					for (int i = 0; i < width; i++) {
-						for (int n = 0; n < height; n++) {
+					cv::Mat frame = cv::Mat::zeros(height, width, CV_32S);
+					for (int i = 0; i < height; i++) {
+						for (int n = 0; n < width; n++) {
 							q = 0;
 
 							signal = bitStream.readBit() & 1;
-							cout << signal << endl;
-
 							while (true) {
 								bit = bitStream.readBit();
 
@@ -191,7 +186,7 @@ class Golomb {
 								k = log2(m);
 								r = bitStream.readNBits(k);
 								if (signal)
-									num = -1*q*m+r;
+									num = -1*(q*m+r);
 								else
 									num = q*m+r;
 							}
@@ -201,26 +196,32 @@ class Golomb {
 
 								if (r < pow(2, b)-m) {
 									if (signal)
-										num = -1*q*m+r;
+										num = -1*(q*m+r);
 									else
 										num = q*m+r;
 
 								} else {
 									int val = (bitStream.readBit()&1);
 									if (signal)
-										num = -1*q*m + ( 2*r+val ) - pow(2, b)+m;
+										num = -1*(q*m + ( 2*r+val ) - pow(2, b)+m);
 									else
 										num = q*m + ( 2*r+val ) - pow(2, b)+m;
 
 								}
 							}
-							frame.at<cv::Vec3b>(i, n).val[ch] = num;
+							//cout << "Decoded: " << num << endl;
+							//cout << i << ", " << n << endl;
+							//cout << "Read number " << num << endl;
+							frame.at<int>(i, n) = num;
+							//cout << frame << endl;
 						}
 					}
+					//cout << frame << endl;
+					video.push_back(frame);
+					//cout << frame << endl;
 				}
-
-				video.push_back(frame);
 			}
+			//cout << video.at(0) << endl;
 		}
 
 		/*! \fn finishEncoding
