@@ -1,3 +1,9 @@
+/*! \file	CompleteEncoder.cpp
+ *	\brief	Video encoder based on Golomb codes and predictive coding. 
+ *			Takes in a file to encode and the predictor type
+ *
+ */
+
 #include "opencv2/opencv.hpp"
 #include "Golomb.h"
 #include <iostream>
@@ -5,6 +11,13 @@
 using namespace cv;
 using namespace std;
 
+/*! \fn encodeFrame
+*	\brief Encode a frame using Golomb codes and predictive coding
+*	
+*	\param frame Frame that will be encoded
+*	\param g Golomb encoder object
+*	\param predictor Predictor type from 1-8, 8 is Jpeg-LS
+*/
 void encodeFrame(Mat frame, Golomb &g, int predictor) {
 	int ch, i, n, colorVal, pred, err;
 
@@ -75,6 +88,12 @@ void encodeFrame(Mat frame, Golomb &g, int predictor) {
 	g.finishEncoding();
 }
 
+/*! \fn decode
+*	\brief Decode a video based on a predictor type
+*	
+*	\param g Golomb encoder object
+*	\param predictor Predictor type from 1-8, 8 is Jpeg-LS
+*/
 void decodeVideo(Golomb &g, int predictor) {
 	vector<Mat> encodedData;
 	//vector<Mat> realData;
@@ -159,7 +178,7 @@ void decodeVideo(Golomb &g, int predictor) {
 
 int main(int argc, char** argv) {
 	if (argc != 3) {
-        cout << "Usage: " << argv[0] << " \'Input_File_Path\' \'Predictor_Type_[1,7]\' " << endl;
+        cout << "Usage: " << argv[0] << " \'Input_File_Path\' \'Predictor_Type_[1,8]\' " << endl;
         return 1;
     }
 	Mat img = imread(argv[1], IMREAD_COLOR);
@@ -168,17 +187,17 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 	
-	if (atoi(argv[2]) < 1 || atoi(argv[2]) > 7) {
+	if (atoi(argv[2]) < 1 || atoi(argv[2]) > 8) {
 		cout << "Invalid predictor option." << endl;
 		return 1;
 	}
-	/*
-	Golomb g("encoded.bin", 4, img.cols, img.rows, 1);
+
+	Golomb g("EncodedFile.bin", 4, img.cols, img.rows, 1);
 
 	encodeFrame(img, g, atoi(argv[2]));
 
 	decodeVideo(g, atoi(argv[2]));
-	*/
+
 	/*************************************************************
 	 * Implementation for video coding
 	VideoCapture video = VideoCapture(argv[1]);

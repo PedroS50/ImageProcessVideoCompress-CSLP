@@ -146,6 +146,12 @@ class Golomb {
 			}
 		}
 
+		/*! \fn decodeVideo
+		*	\brief 	Decodes an encoded video file storing the information on a vector.
+		*			Each vector element will be a channel from a frame from the video.
+		*	
+		*	\param video Video vector address where the frames will be stored
+		*/
 		void decodeVideo(vector<cv::Mat> &video) {
 			BitStream bitStream;
 			bitStream.setInputFile(file_path);
