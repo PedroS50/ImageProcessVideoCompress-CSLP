@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
-project( VideoEncoder )
+project( CompleteEncoder )
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
-add_executable( output VideoEncoder.cpp )
+add_executable( output CompleteEncoder.cpp )
 target_link_libraries( output ${OpenCV_LIBS} )
