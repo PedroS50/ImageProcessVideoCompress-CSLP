@@ -203,7 +203,7 @@ int main(int argc, char** argv) {
 	VideoCapture video = VideoCapture(argv[1]);
 	Mat frame;
 	//Golomb gol("EncodedFile.bin", 4, int(video.get(CAP_PROP_FRAME_WIDTH)), int(video.get(CAP_PROP_FRAME_HEIGHT)), int(video.get(CAP_PROP_FRAME_COUNT)));
-	Golomb gol(argv[2], 5, int(video.get(CAP_PROP_FRAME_WIDTH)), int(video.get(CAP_PROP_FRAME_HEIGHT)), 100);
+	Golomb gol(argv[2], 5, int(video.get(CAP_PROP_FRAME_WIDTH)), int(video.get(CAP_PROP_FRAME_HEIGHT)), 10);
 
 	int count = 0;
 	
@@ -215,14 +215,14 @@ int main(int argc, char** argv) {
 		if (frame.empty()) {break;}
 		cout << "Encoding frame " << count << endl;
 		encodeFrame(frame, gol, atoi(argv[3]));
-		if (count==100) {break;}
+		if (count==10) {break;}
 	}
 	gol.finishEncoding();
 	chrono::steady_clock::time_point end = chrono::steady_clock::now();
 	
 	cout << "\nEncoding duration = " << chrono::duration_cast<chrono::seconds>(end - begin).count() << "[s]" << endl;
 	
-	//decodeVideo(argv[2], gol, atoi(argv[3]));
+	decodeVideo(argv[2], gol, atoi(argv[3]));
 	return 0;
 	/*************************************************************/
 
