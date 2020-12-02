@@ -19,14 +19,14 @@ class Golomb {
 		BitStream bitStream;
 
 	public:
-		Golomb(string path, int value, int w, int h, int nF) {
-			file_path = path;
-			mEnc = value;
-			wEnc = w;
-			hEnc = h;
-			nFrames = nF;
+		Golomb(string path, int value, int w = 0, int h = 0, int nF = 0) {
+			this->file_path = path;
+			this->mEnc = value;
+			this->wEnc = w;
+			this->hEnc = h;
+			this->nFrames = nF;
 			
-			bitStream.setOutputFile(file_path);
+			bitStream.setOutputFile(path);
 			bitStream.writeNBits(value, 8);
 			bitStream.writeNBits(h, 12);
 			bitStream.writeNBits(w, 12);
@@ -49,30 +49,29 @@ class Golomb {
 
 			num = abs(num);
 
-			q = num/mEnc;
+			q = num/this->mEnc;
 			//cout << "q = " << num << " / " << m << " = " << q << "\n";
-			r = num%mEnc;
+			r = num%this->mEnc;
 			//cout << "r = " << num << " % " << m << " = " << r << "\n";
 
 			for (int i = 0; i<q; i++) {
 				bitStream.writeBit(1);
-				
 			}
 
 			bitStream.writeBit(0);
 
 			if (mEnc%2 == 0) {
-				k = log2(mEnc);
+				k = log2(this->mEnc);
 				bitStream.writeNBits(r, k);
 
 			} else {
-				int b = ceil(log2(mEnc));
+				int b = ceil(log2(this->mEnc));
 
-				if (r < pow(2, b)-mEnc) {
+				if (r < pow(2, b)-this->mEnc) {
 					bitStream.writeNBits(r, b-1);
 
 				} else {
-					bitStream.writeNBits(r+pow(2, b)-mEnc, b);
+					bitStream.writeNBits(r+pow(2, b)-this->mEnc, b);
 
 				}
 			}
@@ -146,88 +145,106 @@ class Golomb {
 			}
 		}
 
-		/*! \fn decodeVideo
-		*	\brief 	Decodes an encoded video file storing the information on a vector.
-		*			Each vector element will be a channel from a frame from the video.
+		/*! \fn decodeFrame
+		*	\brief 	Decodes a frame from the input file storing the individual channels in a Mat vector.
 		*	
-		*	\param video Video vector address where the frames will be stored
+		*	\param frame Frame vector address where the decoded frame will be stored
+		*	\param m Value m to use in Golomb decoding
+		*	\param height Frame height
+		*	\param width Frame width
 		*/
-		void decodeVideo(vector<cv::Mat> &video) {
-			BitStream bitStream;
-			bitStream.setInputFile(file_path);
+		void decodeFrame(vector<cv::Mat> &frame, int m, int height, int width) {
+
+			if ( !bitStream.inputFileIsOpen() ) {
+				cout << "No input file detected.";
+				return;
+			}
 
 			unsigned int r;
-			int q, k, b, signal, m, width, height, frameCount;
+			int q, k, b, signal;
 
 			signed int num = 0;
 			unsigned char bit;
 
+			//vector<cv::Mat> channels;
+			
+			//cout << "\nSeparador\n";
+
+			//for (int frameN = 0; frameN < frameCount; frameN++) {
+			for (int ch = 0; ch < 3; ch++) {
+				cv::Mat frameCh = cv::Mat::zeros(height, width, CV_32S);
+				for (int i = 0; i < height; i++) {
+					for (int n = 0; n < width; n++) {
+						q = 0;
+
+						signal = bitStream.readBit() & 1;
+						while (true) {
+							bit = bitStream.readBit();
+
+							if ((bit & 1) == 0) 
+								break;
+							q++;
+						}
+
+						if (bitStream.getEOF())
+							break;
+
+						if (m%2 == 0) {
+							k = log2(m);
+							r = bitStream.readNBits(k);
+							if (signal)
+								num = -1*(q*m+r);
+							else
+								num = q*m+r;
+						}
+						else {
+							b = ceil(log2(m));
+							r = bitStream.readNBits(b-1);
+
+							if (r < pow(2, b)-m) {
+								if (signal)
+									num = -1*(q*m+r);
+								else
+									num = q*m+r;
+
+							} else {
+								int val = (bitStream.readBit()&1);
+								if (signal)
+									num = -1*(q*m + ( 2*r+val ) - pow(2, b)+m);
+								else
+									num = q*m + ( 2*r+val ) - pow(2, b)+m;
+
+							}
+						}
+						//cout << "Decoded: " << num << endl;
+						//cout << i << ", " << n << endl;
+						//cout << "Read number " << num << endl;
+						frameCh.at<int>(i, n) = num;
+						//cout << frame << endl;
+					}
+				}
+				frame.push_back(frameCh);
+				//cout << frame << endl;
+			}
+			//}
+		}
+
+		/*! \fn readFileHeaders
+		*	\brief Read a files headers in order to get values m, width, height and frame count from an encoded video.
+		*
+		*	\param input_path File from which the headers will be read
+		*	\param m Variable where value m will be stored
+		*	\param width Variable where video width will be stored
+		*	\param height Variable where video height will be stored
+		*	\param frameCount Variable where the number of frames will be stored
+		*/
+		int readFileHeaders(string input_path, int &m, int &width, int &height, int &frameCount) {
+			bitStream.setInputFile(input_path);
 			m = bitStream.readNBits(8);
 			height = bitStream.readNBits(12);
 			width = bitStream.readNBits(12);
 			frameCount = bitStream.readNBits(16);
 
-			//cout << "\nSeparador\n";
-
-			for (int frameN = 0; frameN < frameCount; frameN++) {
-				for (int ch = 0; ch < 3; ch++) {
-					cv::Mat frame = cv::Mat::zeros(height, width, CV_32S);
-					for (int i = 0; i < height; i++) {
-						for (int n = 0; n < width; n++) {
-							q = 0;
-
-							signal = bitStream.readBit() & 1;
-							while (true) {
-								bit = bitStream.readBit();
-
-								if ((bit & 1) == 0) 
-									break;
-								q++;
-							}
-
-							if (bitStream.getEOF())
-								break;
-
-							if (m%2 == 0) {
-								k = log2(m);
-								r = bitStream.readNBits(k);
-								if (signal)
-									num = -1*(q*m+r);
-								else
-									num = q*m+r;
-							}
-							else {
-								b = ceil(log2(m));
-								r = bitStream.readNBits(b-1);
-
-								if (r < pow(2, b)-m) {
-									if (signal)
-										num = -1*(q*m+r);
-									else
-										num = q*m+r;
-
-								} else {
-									int val = (bitStream.readBit()&1);
-									if (signal)
-										num = -1*(q*m + ( 2*r+val ) - pow(2, b)+m);
-									else
-										num = q*m + ( 2*r+val ) - pow(2, b)+m;
-
-								}
-							}
-							//cout << "Decoded: " << num << endl;
-							//cout << i << ", " << n << endl;
-							//cout << "Read number " << num << endl;
-							frame.at<int>(i, n) = num;
-							//cout << frame << endl;
-						}
-					}
-					//cout << frame << endl;
-					video.push_back(frame);
-					//cout << frame << endl;
-				}
-			}
-			//cout << video.at(0) << endl;
 		}
 
 		/*! \fn finishEncoding

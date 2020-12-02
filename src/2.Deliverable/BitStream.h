@@ -44,6 +44,15 @@ class BitStream {
 			input_file.open(file, ios::binary | ios::in);
 		}
 
+		/*! \fn setInPutFile
+		*	\brief Set the input file
+		*	
+		*	\param file Input file path
+		*/
+		bool inputFileIsOpen() {
+			return input_file.is_open();
+		}
+
 		void closeOutputFile() {
 			if (bitCount != 0) {
 				flushBuffer();
@@ -65,10 +74,10 @@ class BitStream {
 		*	\param bit Bit (0 or 1) that will be written
 		*/
 		void writeBit(int bit) {
-			if (!output_file.is_open()){
-				cout << "No output file is currently open.\n";
-				return;
-			}
+			//if (!output_file.is_open()){
+			//	cout << "No output file is currently open.\n";
+			//	return;
+			//}
 			buff = buff>>1;
 			buff |= (bit<<7);
 			bitCount++;
@@ -87,16 +96,13 @@ class BitStream {
 		*	\param bits Bits (0s and 1s) that will be written
 		*/
 		void writeNBits(int number, int nBits) {
-			if (!output_file.is_open()){
-				cout << "No output file is currently open.\n";
-				return;
-			}
+			//if (!output_file.is_open()){
+			//	cout << "No output file is currently open.\n";
+			//	return;
+			//}
 
 			int nZeros = __builtin_clz(number);
-			//cout << "\nnZeros:" << nZeros << "\n";
 			int sizeNumber = 32 - __builtin_clz(number);
-			//cout << "\nsizeNumber:" << sizeNumber << "\n";
-			int n;
 
 			if (sizeNumber > nBits) {
 				cout << "Número insuficiente de bits.\n";
@@ -104,31 +110,13 @@ class BitStream {
 			}
 
 			int nZerosPad = nBits-sizeNumber;
-			//cout << "\nnZerosPad:" << nZerosPad << "\n";
-			for (n = 0; n<nZerosPad; n++) {
+			for (int n = 0; n<nZerosPad; n++) {
 				writeBit(0);
 			}
 
-			for (n = sizeNumber-1; n>=0; n--) {
-				/*if (bitCount == 8) {
-					cout << "\n 8 Bits!\n";
-					bitset<8> x(buff);
-					cout << x << "\n"; 
-
-				}*/
-				//bitset<sizeof(sizeNumber)> x(number);
-				//cout << "\nAqui:" << x << "\n"; 
-				//cout << (1 & (number>>n)) << "\n";
+			for (int n = sizeNumber-1; n>=0; n--) {
 				writeBit(1 & (number>>n));
 			}
-			
-			/*int Bits = floor(log10(nBits))+1;
-			unsigned long long int aux;
-
-			for (int n = 0; n < nBits; n++) {
-				aux = nBits / pow(10, Bits-n-1);
-				writeBit(aux%10);
-			}*/
 		}
 
 		/*! \fn flushBuffer
@@ -136,14 +124,8 @@ class BitStream {
 		*
 		*/
 		void flushBuffer() {
-			
 			while(bitCount) {
-				//cout << "\nWritting bit 0...\n";
-				//bitset<8> x(buff);
-				//cout << "Before:" << x << "\n";
-				writeBit(0);
-				//bitset<8> y(buff);
-				//cout << "After:" << y << "\n";				
+				writeBit(0);				
 			}
 		}
 		/*----------------------------------------------------------*/
