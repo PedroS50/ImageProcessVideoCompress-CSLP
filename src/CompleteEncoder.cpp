@@ -166,7 +166,7 @@ void decodeVideo(string path, Golomb &g, int predictor) {
 		}
 
 		cout << "Showing frame N" << nFrame << endl;
-		namedWindow("Video", WINDOW_AUTOSIZE);
+		namedWindow("Image", WINDOW_AUTOSIZE);
 		imshow("Image", frame);
 		if (waitKey(10) == 27) {destroyAllWindows();break;}; // Wait for a keystroke in the window
 		
