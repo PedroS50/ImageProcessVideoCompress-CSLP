@@ -167,7 +167,7 @@ Mat cannyEdge(Mat image, int lowerThresh) {
 }
 
 int main() {
-	string filename = "resources/ducks_take_off1080.y4m";
+	string filename = "Resources/ducks_take_off_1080p50.y4m";
 	string m = "watmark.jpg";
 	VideoCapture video = VideoCapture(filename);
 	int op;

@@ -7,21 +7,63 @@ using namespace std;
 
 int main( int argc, char** argv) {
 	BitStream bs;
+	bs.setToWrite("EncodedData.bin");
+	bs.writeNBits(23, 8);
+	bs.writeNBits(23, 5);
+	bs.writeNBits(10, 4);
+	bs.writeNBits(1, 50);
+	bs.writeBit(1);
+	bs.writeBit(0);
+	bs.writeBit(1);
+	bs.writeNBits(50, 16);
+	bs.close();
+	bs.setToRead("EncodedData.bin");
+	cout << bs.readNBits(8) << endl;
+	cout << bs.readNBits(5) << endl;
+	cout << bs.readNBits(4) << endl;
+	cout << bs.readNBits(50) << endl;
+	cout << (bs.readBit()&1) << endl;
+	cout << (bs.readBit()&1) << endl;
+	cout << (bs.readBit()&1) << endl;
+	cout << bs.readNBits(16) << endl;
 
-	bs.setOutputFile("BinaryFile.bin");
-
-	bs.setInputFile("BinaryFile.bin");
 
 	// --------------------
-
+	/*
 	bs.writeBit(1);
 	bs.writeBit(1);
 	bs.writeBit(0);
 	bs.writeBit(1);
+	bs.writeBit(1);
+	bs.writeBit(0);
+	bs.writeBit(0);
+	bs.writeBit(1);
+	bs.writeBit(0);
+	bs.writeBit(0);
+	bs.writeBit(0);
+	bs.writeBit(1);
+
+	bs.close();
+	bs.setToWrite("EncodedData.bin");
 	
-	bs.writeNBits(1010);
-	bs.writeNBits(101);
-	bs.closeOutputFile();
+	bs.writeNBits(11, 8);
+	bs.close();
+
+	if (bs.setToRead("EncodedData.bin") == -1)
+		return 0;
+	unsigned char bit;
+	int count = 0;
+	while (true) {
+		count++;
+		bit = bs.readBit();
+		if (bit == 2)
+			break;
+		
+		cout << (1&bit);
+		if (count % 8 == 0)
+			cout << endl;
+	}
+	*/
 	/*
 	unsigned int res = bs.readNBits(16);
 	cout << "0-8 bits: " << res << "\n";
@@ -82,9 +124,6 @@ int main( int argc, char** argv) {
 	}*/
 
 	//bs.readNBits(10);
-
-	bs.closeOutputFile();
-	cout << "\n";
 	
 	return 0;
 }

@@ -32,11 +32,10 @@
 *.app
 
 # Additional
-CMakeFiles/
 html/
 latex/
-resources/
+build/
+bin/
+Resources/
+EncodingResults/
 .vscode/
-CMakeCache.txt
-*.cmake
-Makefile
