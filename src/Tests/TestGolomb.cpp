@@ -1,6 +1,5 @@
 #include <iostream>
 #include <stdio.h>
-#include <bitset>
 #include "Golomb.h"
 #include "BitStream.h"
 
