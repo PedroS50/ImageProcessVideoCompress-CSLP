@@ -5,6 +5,12 @@
 #include "opencv2/opencv.hpp"
 #include "BitStream.h"
 
+/** \class GolombEncoder
+ *	\brief Class used to encode numbers to a file using Golomb codes.
+ *	
+ *	Given a file path and value m (which is written in the first byte of the file),
+ *	encodes and writes given numbers to the file.
+ */
 class GolombEncoder {
 private:
 	/** BitStream instance that will be used to write bits to a file. */
@@ -32,6 +38,12 @@ public:
 
 };
 
+/** \class GolombDecoder
+ *	\brief Class used to decode numbers from a file based on Golomb codes.
+ *	
+ *	Given a file path, reads the first byte which returns the value m used during encoding.
+ *	Every call to method decode returns a decode int.
+ */
 class GolombDecoder {
 private:
 	/** BitStream instance that will be used to read bits from file. */
@@ -49,21 +61,6 @@ public:
 	/** \brief Method used to decode one number.
 	 */
 	int decode();
-
-	void decodeFrame(vector<cv::Mat> &frame, int m, int height, int width);
-
-	/** \fn readFileHeaders
-	 *	\brief Read a files headers in order to get values m, width, height and frame count from an encoded video.
-	 *
-	 *	\param input_path File from which the headers will be read
-	 *	\param m Variable where value m will be stored
-	 *	\param width Variable where video width will be stored
-	 *	\param height Variable where video height will be stored
-	 *	\param frameCount Variable where the number of frames will be stored
-	 */
-	int readFileHeaders(string input_path, int &m, int &predictor, int &width, int &height, int &frameCount);
-
-
 };
 
 #endif

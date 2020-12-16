@@ -6,7 +6,7 @@
 #include <fstream>
 
 using namespace std;
-/*! \class BitStream
+/** \class BitStream
 *	\brief Class that performs operations with bits.
 *	
 *	A class used to read/ write bits from/ to a file. 

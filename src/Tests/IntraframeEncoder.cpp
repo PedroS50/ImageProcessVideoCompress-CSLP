@@ -26,13 +26,16 @@ void encodeFrame(Mat frame, GolombEncoder &g, int predictor) {
 	Mat image;
 	hconcat(Mat::zeros(frame.rows, 1, CV_8UC3), frame, image);
 	vconcat(Mat::zeros(1, frame.cols+1, CV_8UC3), image, image);
-
-	for (int ch = 0; ch < 3 ; ch++) {
-		for (int i = 1; i < image.rows; i++) {
-			for (int n = 1; n < image.cols; n++) {
-				a = image.at<Vec3b>(i, n-1).val[ch];
-				b = image.at<Vec3b>(i-1, n).val[ch];
-				c = image.at<Vec3b>(i-1, n-1).val[ch];
+	unsigned char *pFrameData = (unsigned char*)(image.data);
+	for (int i = 1; i < image.rows; i++) {
+		for (int n = 1; n < image.cols; n++) {
+			for (int ch = 0; ch < 3 ; ch++) {
+				a = pFrameData[image.channels() * (image.cols * i + (n-1)) + ch];
+				b = pFrameData[image.channels() * (image.cols * (i-1) + n) + ch];
+				c = pFrameData[image.channels() * (image.cols * (i-1) + (n-1)) + ch];
+				//a = image.at<Vec3b>(i, n-1).val[ch];
+				//b = image.at<Vec3b>(i-1, n).val[ch];
+				//c = image.at<Vec3b>(i-1, n-1).val[ch];
 
 				switch (predictor) {
 					case 1:
@@ -80,7 +83,8 @@ void encodeFrame(Mat frame, GolombEncoder &g, int predictor) {
 
 				// image.at<Vec3b>(i,n) -> Retrieve pixel at location (i, n)
 				// .val[ch] -> Retrieve color value from pixel [b,g,r]
-				colorVal = image.at<Vec3b>(i, n).val[ch];
+				colorVal = pFrameData[image.channels() * (image.cols * i + n) + ch];
+				//colorVal = image.at<Vec3b>(i, n).val[ch];
 				// Encode Error = estimate - real value
 				g.encode(colorVal - pred);
 			}
@@ -111,21 +115,26 @@ void decodeVideo(string path) {
 	for (int nFrame = 0; nFrame < nFrames; nFrame++){
 		vector<Mat> encodedData;
 		frame = Mat::zeros(height, width, CV_8UC3);
-		for (int ch = 0; ch < 3; ch++){
-			for (int i = 0; i < height; i++) {
-				for (int n = 0; n < width; n++) {
+		unsigned char *pFrameData = (unsigned char*)(frame.data);
+
+		for (int i = 0; i < height; i++) {
+			for (int n = 0; n < width; n++) {
+				for (int ch = 0; ch < 3; ch++){
 					if (n == 0)
 						a = 0;
 					else
-						a = frame.at<Vec3b>(i, n-1).val[ch];
+						a = pFrameData[frame.channels() * (frame.cols * i + (n-1)) + ch];
+						//a = frame.at<Vec3b>(i, n-1).val[ch];
 					if (i == 0)
 						b = 0;
 					else
-						b = frame.at<Vec3b>(i-1, n).val[ch];
+						b = pFrameData[frame.channels() * (frame.cols * (i-1) + n) + ch];
+						//b = frame.at<Vec3b>(i-1, n).val[ch];
 					if (i == 0 || n == 0)
 						c = 0;
 					else
-						c = frame.at<Vec3b>(i-1, n-1).val[ch];
+						c = pFrameData[frame.channels() * (frame.cols * (i-1) + (n-1)) + ch];
+						//c = frame.at<Vec3b>(i-1, n-1).val[ch];
 					
 					switch (predictor) {
 						case 1:
@@ -171,12 +180,13 @@ void decodeVideo(string path) {
 							break;
 					}
 					err = dec.decode();
-					frame.at<Vec3b>(i, n).val[ch] = pred+err;
+					pFrameData[frame.channels() * (frame.cols * i + n) + ch] = pred+err;
+					//frame.at<Vec3b>(i, n).val[ch] = pred+err;
 				}
 			}
 		}
 
-		cout << "Showing frame N" << nFrame << endl;
+		cout << "Showing frame N" << nFrame+1 << endl;
 		namedWindow("Image", WINDOW_AUTOSIZE);
 		imshow("Image", frame);
 		if (waitKey(10) == 27) {destroyAllWindows();break;}; // Wait for a keystroke in the window
@@ -190,17 +200,60 @@ void intraEncode() {
 	
 }
 
-int main(int argc, char** argv) {
-	VideoCapture video = VideoCapture("Resources/ducks_take_off_1080p50.y4m");
+int main() {
+	/*
+	int w = 352;  
+    int h = 288;  
+	int n_frames = 300;
+	int predictor = 8;
+
+	GolombEncoder enc("Encoded.bin", 4);
+
+	enc.encode(predictor);
+	enc.encode(w);
+	enc.encode(h);
+	enc.encode(n_frames);
+
+  	VideoWriter video("bgrVideo.avi",VideoWriter::fourcc('R','G','B','A'),25, Size(w,h), true);
+    FILE* pFileIn = fopen("Resources/akiyo_cif.yuv", "rb+");  
+    int bufLen = w*h*1.5;  
+    unsigned char* pYuvBuf = new unsigned char[bufLen];  
+    int iCount = 0;  
+
+    for(int i=0; i<n_frames; i++)
+    {  
+        fread(pYuvBuf, bufLen*sizeof(unsigned char), 1, pFileIn);  
+        Mat yuvImg;  
+        yuvImg.create(h*3/2, w, CV_8UC1);   
+        memcpy(yuvImg.data, pYuvBuf, bufLen*sizeof(unsigned char));  
+        Mat bgrImg;  
+        cvtColor(yuvImg, bgrImg,  COLOR_YUV2BGR_IYUV);  
+		video.write(bgrImg);
+		encodeFrame(bgrImg, enc, predictor);
+        waitKey(30);
+
+        cout << "Encoded frame " << iCount++ << endl;
+    }
+  
+	enc.finishEncoding();
+    delete[] pYuvBuf;
+    fclose(pFileIn);
+	video.release();
+
+	decodeVideo("Encoded.bin");
+	*/
+
+	VideoCapture video = VideoCapture("Resources/bgrVideo.avi");
 	Mat frame;
 
 	int predictor = 8;
-	GolombEncoder enc("Encoded.bin", 3);
+	GolombEncoder enc("EncodedIntra.bin", 3);
 
 	enc.encode(predictor);
 	enc.encode(video.get(CAP_PROP_FRAME_WIDTH));
 	enc.encode(video.get(CAP_PROP_FRAME_HEIGHT));
 	enc.encode(video.get(CAP_PROP_FRAME_COUNT));
+
 	int count = 0;
 	while (true) {
 		count++;
@@ -209,6 +262,7 @@ int main(int argc, char** argv) {
 		encodeFrame(frame, enc, predictor);
 		cout << "Encoded frame " << count << endl;
 	}
+
 	enc.finishEncoding();
 
 	//decodeVideo("Encoded.bin");
