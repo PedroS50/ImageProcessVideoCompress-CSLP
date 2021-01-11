@@ -8,12 +8,12 @@ string encode(string video_path) {
 	VideoCapture video = VideoCapture(video_path);
 	string encoded_path = "Encoded.bin";
 	GolombEncoder enc(encoded_path);
-	IntraEncoder intra_enc(&enc, 1);
+	IntraEncoder intra_enc(&enc, 8);
 
 	Mat frame;
 	Mat aux_frame;
 
-	enc.encode(1);
+	enc.encode(8);
 	enc.encode(video.get(CAP_PROP_FRAME_WIDTH));
 	enc.encode(video.get(CAP_PROP_FRAME_HEIGHT));
 	enc.encode(video.get(CAP_PROP_FRAME_COUNT));
