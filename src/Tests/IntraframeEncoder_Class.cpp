@@ -30,7 +30,6 @@ string encode(string video_path) {
 	}
 
 	enc.finishEncoding();
-	cout << "Vou sair"<< endl;
 	return encoded_path;
 }
 
@@ -59,6 +58,5 @@ void decode(string encoded_path) {
 
 int main() {
 	string encoded = encode("Resources/bgrVideo.avi");
-	cout << "Fudi-me" << endl;
 	decode(encoded);
 }

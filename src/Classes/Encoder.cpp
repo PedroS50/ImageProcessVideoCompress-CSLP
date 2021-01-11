@@ -1,4 +1,5 @@
 #include "Encoder.h"
+#include <unistd.h>
 
 IntraEncoder::IntraEncoder(GolombEncoder *enc, int predictor) {
 	this->predictor = predictor;
@@ -194,9 +195,10 @@ void IntraDecoder::decode(Mat &frame) {
 	}
 }
 
-InterEncoder::InterEncoder(int block_size, int block_range) {
+InterEncoder::InterEncoder(GolombEncoder *enc, int block_size, int block_range) {
 	this->block_size = block_size;
 	this->block_range = block_range;
+	this->enc = enc;
 
 }
 
@@ -208,19 +210,21 @@ int InterEncoder::get_block_range() {
 	return block_range;
 }
 
-void InterEncoder::encode(GolombEncoder &enc, Mat old_frame, Mat curr_frame) {
+void InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 	/** Current frame's block. */
 	Mat curr_block;
 	/** Previous frame's block. */
 	Mat old_block;
 	/** Block with error values. */
-	Mat block_diff;
+	Mat block_diff = Mat::zeros(block_size, block_size, CV_16SC3);
 	/** Block with error values which minizes min_diff. */
 	Mat min_block_diff;
 
 	/** Sum of matrix that corresponds to the minimum difference between current frame's block
 	 *	and previous frame's block. */
 	int min_diff;
+
+	int min_block_sum;
 	/** x coordinate of previous frame's block which minimizes error. */
 	int min_x;
 	/** y coordinate of previous frame's block which minimizes error. */
@@ -229,29 +233,37 @@ void InterEncoder::encode(GolombEncoder &enc, Mat old_frame, Mat curr_frame) {
 	int max_x = (curr_frame.cols - block_size);
 	/** Max value of y which the sliding block can reach. */
 	int max_y = (curr_frame.rows - block_size);
-	
+
+	unsigned char *pCurrFrameData = (unsigned char*)(curr_frame.data);
+	unsigned char *pOldFrameData = (unsigned char*)(old_frame.data);
+
 	// Iterate through current frame's blocks.
 	for (int curr_y = 0; curr_y <= max_y; curr_y += block_size) {
 		for (int curr_x = 0; curr_x <= max_x; curr_x += block_size) {
-			min_diff = 100000;
+			min_diff = 10000000;
 
 			// Get current block.
-			curr_block = Mat(curr_frame, Rect(curr_x, curr_y, block_size, block_size));
+			//curr_block = Mat(curr_frame, Rect(curr_x, curr_y, block_size, block_size));
 
 			// Iterate through previous frame's blocks
 			for (int old_y = ( (curr_y-block_range < 0) ? 0 : (curr_y-block_range) );
-				old_y < ( (curr_y+block_range >= max_y) ? max_y : (curr_y+block_range) ); old_y++) {
+				old_y <= ( (curr_y+block_range >= max_y) ? max_y : (curr_y+block_range) ); old_y++) {
 					for (int old_x = ( (curr_x-block_range < 0) ? 0 : (curr_x-block_range) );
-						old_x < ( (curr_x+block_range >= max_x) ? max_x : (curr_x+block_range) ); old_x++) {
+						old_x <= ( (curr_x+block_range >= max_x) ? max_x : (curr_x+block_range) ); old_x++) {
 							
-							old_block = Mat(old_frame, Rect(old_x, old_y, block_size, block_size));
-							block_diff = curr_block - old_block;
-
-							if (sum(sum(block_diff))[0] < min_diff) {
+							//old_block = Mat(old_frame, Rect(old_x, old_y, block_size, block_size));
+							//block_diff = Mat::zeros(block_size, block_size, CV_16SC3);
+							for (int i = 0; i < block_size; i++)
+								for (int j = 0; j < block_size; j++)
+									for (int ch = 0; ch < 3; ch++)
+										block_diff.at<Vec3s>(i,j).val[ch] = pCurrFrameData[curr_frame.channels() * (curr_frame.cols * (curr_y+i) + (curr_x+j)) + ch]-pOldFrameData[old_frame.channels() * (old_frame.cols * (old_y+i) + (old_x+j)) + ch];
+										//block_diff.at<Vec3s>(i,j).val[ch] = curr_block.at<Vec3b>(i,j).val[ch] - old_block.at<Vec3b>(i,j).val[ch];
+							min_block_sum = abs(sum(sum(block_diff))[0]);
+							if (min_block_sum < min_diff) {
 								min_x = old_x;
 								min_y = old_y;
 								block_diff.copyTo(min_block_diff);
-								min_diff = abs(sum(sum(min_block_diff))[0]);
+								min_diff = min_block_sum;
 								// If the difference between blocks is 0, no need to keep searching.
 								if (min_diff==0)
 									break;
@@ -263,14 +275,14 @@ void InterEncoder::encode(GolombEncoder &enc, Mat old_frame, Mat curr_frame) {
 				}
 
 			// Encode blocks coordinates.
-			enc.encode(min_x);
-			enc.encode(min_y);
-
+			enc->encode(min_x);
+			enc->encode(min_y);
+			
 			// Encode error between blocks. 
 			for (int i = 0; i < block_size; i++) {
 				for (int j = 0; j < block_size; j++) {
 					for (int ch = 0; ch < 3; ch++) {
-						enc.encode(min_block_diff.at<Vec3b>(i,j).val[ch]);
+						enc->encode(min_block_diff.at<Vec3s>(i,j).val[ch]);
 					}
 				}
 			}
@@ -288,6 +300,8 @@ InterDecoder::InterDecoder(GolombDecoder *dec, int block_size, int block_range) 
 void InterDecoder::decode(Mat old_frame, Mat &curr_frame) {
 	/** Previous frame's block. */
 	Mat old_block;
+	/** Previous frame's block. */
+	Mat curr_block;
 	
 	/** Error decoded from file. */
 	int err;
@@ -305,29 +319,37 @@ void InterDecoder::decode(Mat old_frame, Mat &curr_frame) {
 	int old_x;
 	/** y coordinate of previous frame's block which minimizes error. */
 	int old_y;
-	
+
+	unsigned char *pOldFrameData = (unsigned char*)(old_frame.data);
+	unsigned char *pCurrFrameData = (unsigned char*)(curr_frame.data);
+
 	for (int curr_y = 0; curr_y <= max_y; curr_y += block_size) {
 		for (int curr_x = 0; curr_x <= max_x; curr_x += block_size) {
-			//cout << "A(" << curr_x << ", " << curr_y << ")" << endl;
 			old_x = dec->decode();
 			old_y = dec->decode();
 
-			//old_block = Mat(old_frame, Rect(old_x, old_y, block_size, block_size));
-
-			for (int i = curr_y; i < curr_y+block_size; i++, old_y++) {
-				for (int j = curr_x; j < curr_x+block_size; j++, old_x++) {
-					//cout << "(" << i << ", " << j << ")" << endl;
-					//cout << "(" << old_x << ", " << old_y << ")" << endl;
-					//cout << endl;
+			for (int i = curr_y; i < curr_y+block_size; i++) {
+				for (int j = curr_x; j < curr_x+block_size; j++) {
 					for (int ch = 0; ch < 3; ch++) {
-						err = dec->decode();
-						pred = old_frame.at<Vec3b>(old_y, old_x).val[ch];
-						curr_frame.at<Vec3b>(i,j).val[ch] =	pred + err;
+						pCurrFrameData[curr_frame.channels() * (curr_frame.cols * i + j) + ch] = pOldFrameData[old_frame.channels() * (old_frame.cols * (old_y+i-curr_y) + (old_x+j-curr_x)) + ch] + dec->decode();
+					}
+				}
+			}
+			/*
+			for (int aux_y = old_y; aux_y < old_y+block_size; aux_y++) {
+				for (int aux_x = old_x; aux_x < old_x+block_size; aux_x++) {
+					for (int ch = 0; ch < 3; ch++) {
+						//cout << old_x+block_size << endl;
+						pCurrFrameData[curr_frame.channels() * (curr_frame.cols * (curr_y+aux_y-old_y) + (curr_x+aux_x-old_x)) + ch] = dec->decode() + pOldFrameData[old_frame.channels() * (old_frame.cols * aux_y + aux_x) + ch];
+						//curr_frame.at<Vec3b>(curr_y+aux_y-old_y, curr_x+aux_x-old_x).val[ch] = dec->decode() + old_frame.at<Vec3b>(aux_y, aux_x).val[ch];
+						//cout << curr_y+aux_y-old_y << ", " << curr_x+aux_x-old_x << ", " << ch << endl;
 					}
 				}
 				old_x-=block_size;
+				//cout << old_x << endl;
+				//while (true){}
 			}
-
+			*/
 		}
 	}
 }
@@ -355,7 +377,7 @@ void HybridEncoder::encode() {
 	enc.set_m(4);
 
 	//IntraEncoder intra_enc(this->predictor);
-	InterEncoder inter_enc(this->block_size, this->block_range);
+	//InterEncoder inter_enc(this->block_size, this->block_range);
 
 	enc.encode(this->predictor);
 	enc.encode(this->block_size);
@@ -381,7 +403,7 @@ void HybridEncoder::encode() {
 			//cout << "Check1B" << endl;
 		}
 		else {
-			inter_enc.encode(enc, old_frame, curr_frame);
+			//inter_enc.encode(enc, old_frame, curr_frame);
 		}
 		cout << "Encoded frame " << count << endl;
 		count++;

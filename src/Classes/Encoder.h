@@ -54,7 +54,7 @@ private:
 	GolombEncoder *enc;
 
 public:
-	InterEncoder(int block_size, int block_range);
+	InterEncoder(GolombEncoder *enc, int block_size, int block_range);
 
 	InterEncoder() = default;
 
@@ -62,7 +62,7 @@ public:
 
 	int get_block_range();
 
-	void encode(GolombEncoder &enc, Mat old_frame, Mat curr_frame);
+	void encode(Mat old_frame, Mat curr_frame);
 
 };
 
