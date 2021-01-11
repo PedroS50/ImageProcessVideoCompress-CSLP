@@ -1,14 +1,23 @@
 #include "Golomb.h"
 
-GolombEncoder::GolombEncoder(string file_path, int m) {
+GolombEncoder::GolombEncoder(string file_path) {
 	bitStream.setToWrite(file_path);
-	mEnc = m;
+	this->set_m(3);
+}
 
-	bitStream.writeNBits(m, 8);
+void GolombEncoder::set_m(int m) {
+	this->mEnc = m;
+	this->b = ceil(log2(m));
+
+}
+
+int GolombEncoder::get_m() {
+	return mEnc;
+
 }
 
 void GolombEncoder::encode(int num) {
-	int k, q, r;
+	int q, r;
 
 	if (num < 0)
 		bitStream.writeBit(1);
@@ -25,21 +34,19 @@ void GolombEncoder::encode(int num) {
 	for (int i = 0; i<q; i++) {
 		bitStream.writeBit(1);
 	}
-
+	
 	bitStream.writeBit(0);
 
-	if ( !(mEnc&1) ) {
-		k = log2(mEnc);
-		bitStream.writeNBits(r, k);
+	if ( mEnc%2==0 ) {
+		bitStream.writeNBits(r, b);
 
 	} else {
-		int b = ceil(log2(mEnc));
 
-		if (r < pow(2, b)-mEnc) {
-			bitStream.writeNBits(r, b-1);
+		if (r < pow(2, b+1)-mEnc) {
+			bitStream.writeNBits(r, b);
 
 		} else {
-			bitStream.writeNBits(r+pow(2, b)-mEnc, b);
+			bitStream.writeNBits(r+pow(2, b+1)-mEnc, b+1);
 
 		}
 	}
@@ -51,16 +58,26 @@ void GolombEncoder::finishEncoding() {
 
 GolombDecoder::GolombDecoder(string file_path) {
 	bitStream.setToRead(file_path);
+	this->set_m(3);
 
-	mEnc = bitStream.readNBits(8);
+}
+
+void GolombDecoder::set_m(int m) {
+	this->mEnc = m;
+	this->b = ceil(log2(m));
+
+}
+
+int GolombDecoder::get_m() {
+	return mEnc;
 
 }
 
 int GolombDecoder::decode() {
 	unsigned int r;
-	int q, k, b, signal;
-
 	signed int num;
+	int q, signal;
+
 	unsigned char bit;
 
 	q = 0;
@@ -78,9 +95,8 @@ int GolombDecoder::decode() {
 		q++;
 	}
 
-	if ( !(mEnc&1) ) {
-		k = log2(mEnc);
-		r = bitStream.readNBits(k);
+	if ( mEnc%2==0 ) {
+		r = bitStream.readNBits(b);
 		num = q*mEnc+r;
 		if (!signal)
 			return num; 
@@ -88,10 +104,9 @@ int GolombDecoder::decode() {
 			return -1*num;
 	}
 	else {
-		b = ceil(log2(mEnc));
-		r = bitStream.readNBits(b-1);
+		r = bitStream.readNBits(b);
 
-		if (r < pow(2, b)-mEnc) {
+		if (r < pow(2, b+1)-mEnc) {
 			num = q*mEnc+r;
 			if (!signal)
 				return num; 
@@ -99,7 +114,7 @@ int GolombDecoder::decode() {
 				return -1*num;
 		} else {
 			int val = (bitStream.readBit()&1);
-			num = q*mEnc + ( 2*r+val ) - pow(2, b)+mEnc;
+			num = q*mEnc + ( 2*r+val ) - pow(2, b+1)+mEnc;
 			if (!signal)
 				return num; 
 			else

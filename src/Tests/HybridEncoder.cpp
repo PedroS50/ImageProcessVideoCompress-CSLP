@@ -13,7 +13,7 @@
 
 
 using namespace cv;
-using namespace std;
+
 /** \fn 	interEncoder
  * 	\brief 	Encode a frame using interframe encoding (Motion Compensation), based on Golomb codes.
  * 
@@ -45,20 +45,20 @@ void interEncoder(Mat old_frame, Mat curr_frame, GolombEncoder &enc, int block_d
 	/** Max value of y which the sliding block can reach. */
 	int max_y = (curr_frame.rows - block_dim);
 	
-	/** Iterate through current frame's blocks. */
+	// Iterate through current frame's blocks.
 	for (int curr_y = 0; curr_y <= max_y; curr_y += block_dim) {
 		for (int curr_x = 0; curr_x <= max_x; curr_x += block_dim) {
-			min_diff = 100000;
+			min_diff = 1000000;
 
-			/** Get current block. */
+			// Get current block.
 			curr_block = Mat(curr_frame, Rect(curr_x, curr_y, block_dim, block_dim));
 
-			/** Iterate through previous frame's blocks */
+			// Iterate through previous frame's blocks
 			for (int old_y = ( (curr_y-range < 0) ? 0 : (curr_y-range) );
 				old_y < ( (curr_y+range >= max_y) ? max_y : (curr_y+range) ); old_y++) {
 					for (int old_x = ( (curr_x-range < 0) ? 0 : (curr_x-range) );
 						old_x < ( (curr_x+range >= max_x) ? max_x : (curr_x+range) ); old_x++) {
-							
+
 							old_block = Mat(old_frame, Rect(old_x, old_y, block_dim, block_dim));
 							block_diff = curr_block - old_block;
 
@@ -67,25 +67,25 @@ void interEncoder(Mat old_frame, Mat curr_frame, GolombEncoder &enc, int block_d
 								min_y = old_y;
 								block_diff.copyTo(min_block_diff);
 								min_diff = abs(sum(sum(min_block_diff))[0]);
-								/** If the difference between blocks is 0, no need to keep searching. */
+								// If the difference between blocks is 0, no need to keep searching.
 								if (min_diff==0)
 									break;
 							}
 					}
-					/** If the difference between blocks is 0, no need to keep searching. */
+					// If the difference between blocks is 0, no need to keep searching.
 					if (min_diff==0)
 						break;
 				}
 
-			/** Encode blocks coordinates. */
+			// Encode blocks coordinates.
 			enc.encode(min_x);
 			enc.encode(min_y);
 
-			/** Encode error between blocks. */ 
+			// Encode error between blocks.
 			for (int i = 0; i < block_dim; i++) {
 				for (int j = 0; j < block_dim; j++) {
 					for (int ch = 0; ch < 3; ch++) {
-						enc.encode(min_block_diff.at<Vec3b>(i,j).val[ch]);
+						enc.encode(int(min_block_diff.at<Vec3b>(i,j).val[ch]));
 					}
 				}
 			}
@@ -93,6 +93,8 @@ void interEncoder(Mat old_frame, Mat curr_frame, GolombEncoder &enc, int block_d
 	}
 }
 
+int my_count = 0;
+int my_count2 = 0;
 /**	\fn interDecode
  *	\brief 	Decodes a frame encoded with interframe encoding.
  *			Stores the decoded data in a Mat passed to the function.
@@ -106,7 +108,11 @@ void interDecode(Mat old_frame, Mat &curr_frame, GolombDecoder &dec, int block_d
 	/** Previous frame's block. */
 	Mat old_block;
 	
-	int err, pred;
+	/** Error decoded from file. */
+	int err;
+
+	/** Predicator value extracted from previous frame. */
+	int pred;
 
 	/** Max value of x which the sliding block can reach. */
 	int max_x = (curr_frame.cols - block_dim);
@@ -124,7 +130,7 @@ void interDecode(Mat old_frame, Mat &curr_frame, GolombDecoder &dec, int block_d
 			//cout << "A(" << curr_x << ", " << curr_y << ")" << endl;
 			old_x = dec.decode();
 			old_y = dec.decode();
-
+			tuple<int, int> aux = {old_x, old_y};
 			//old_block = Mat(old_frame, Rect(old_x, old_y, block_dim, block_dim));
 
 			for (int i = curr_y; i < curr_y+block_dim; i++, old_y++) {
@@ -133,12 +139,15 @@ void interDecode(Mat old_frame, Mat &curr_frame, GolombDecoder &dec, int block_d
 					//cout << "(" << old_x << ", " << old_y << ")" << endl;
 					//cout << endl;
 					for (int ch = 0; ch < 3; ch++) {
+						//cout << "(" << i << ", " << j << ", " << ch << ")" << endl;
 						err = dec.decode();
 						pred = old_frame.at<Vec3b>(old_y, old_x).val[ch];
 						curr_frame.at<Vec3b>(i,j).val[ch] =	pred + err;
 					}
 				}
+				//cout << "Before: " << old_x << endl;
 				old_x-=block_dim;
+				//cout << "After: " << old_x << endl;
 			}
 
 		}
@@ -166,7 +175,7 @@ void intraEncoder(Mat frame, GolombEncoder &enc, int predictor) {
 	/** max(a, b) */
 	int maxi;
 
-	/** Matrix where the padded frame is stored. */
+	// Matrix where the padded frame is stored.
 	Mat image;
 	hconcat(Mat::zeros(frame.rows, 1, CV_8UC3), frame, image);
 	vconcat(Mat::zeros(1, frame.cols+1, CV_8UC3), image, image);
@@ -174,11 +183,11 @@ void intraEncoder(Mat frame, GolombEncoder &enc, int predictor) {
 	/** Frame data pointer. */
 	unsigned char *pFrameData = (unsigned char*)(image.data);
 
-	/** Iterate through height, width and channel. */
+	// Iterate through height, width and channel.
 	for (int i = 1; i < image.rows; i++) {
 		for (int n = 1; n < image.cols; n++) {
 			for (int ch = 0; ch < 3 ; ch++) {
-				/** Retrieve values from frame. */
+				// Retrieve values from frame.
 				a = pFrameData[image.channels() * (image.cols * i + (n-1)) + ch];
 				b = pFrameData[image.channels() * (image.cols * (i-1) + n) + ch];
 				c = pFrameData[image.channels() * (image.cols * (i-1) + (n-1)) + ch];
@@ -226,7 +235,7 @@ void intraEncoder(Mat frame, GolombEncoder &enc, int predictor) {
 						return;
 				}
 
-				/** Encode Error = estimate - real value. */
+				// Encode Error = estimate - real value.
 				enc.encode(int(pFrameData[image.channels() * (image.cols * i + n) + ch]) - pred);
 			}
 		}
@@ -312,7 +321,6 @@ void intraDecode(Mat &frame, GolombDecoder &dec, int predictor) {
 	}
 }
 
-
 /**	\fn main
  * 	\brief	Encodes and decodes a video file.
  * 			Encodes the video, writing it in dest_file so it can later be decoded.
@@ -320,61 +328,72 @@ void intraDecode(Mat &frame, GolombDecoder &dec, int predictor) {
  * 			Only information that the decoder needs is the encoded file path.
  */
 int main() {
+	int data1[18] = {1,2,3,4,5,6, 7,8,9,10,11,12, 13,14,15,16,17,18 };
+	Mat test1 = Mat(3, 6, CV_16S, data1);
+	int data2[18] = {1,2,3, 4,5,6, 7,8,9, 10,11,12, 13,14,15, 16,17,18 };
+	Mat test2 = Mat(3, 6, CV_16S, data2);
+	cout << test1 << endl;
+	cout << test1 - test2 << endl;
+
+	
 	String input_file = "Resources/bgrVideo.avi";
 	String dest_file = "Encoded.bin";
 	
-	// /** Arbitrary values. */
-	// int m = 4;
-	// int predictor = 8;
-	// int block_size = 16;
-	// int block_range = 4;
-	// int period = 5;
+	/** Arbitrary values. */
+	int m = 3;
+	int predictor = 8;
+	int block_size = 16;
+	int block_range = 4;
+	int period = 5;
 	
-	// /** Video that will be decoded. */
-	// VideoCapture video = VideoCapture(input_file);
-	// Mat old_frame, curr_frame;
+	/** Video that will be decoded. */
+	VideoCapture video = VideoCapture(input_file);
+	Mat old_frame, curr_frame;
 
-	// /** Object used to encode frames, path to encoded file and value m are defined. */
-	// GolombEncoder enc(dest_file, m);
+	/** Object used to encode frames, path to encoded file and value m are defined. */
+	GolombEncoder enc(dest_file);
+	enc.set_m(3);
 
-	// /** Encode header values to use during decoding. */
-	// enc.encode(predictor);
-	// enc.encode(video.get(CAP_PROP_FRAME_WIDTH));
-	// enc.encode(video.get(CAP_PROP_FRAME_HEIGHT));
-	// enc.encode(video.get(CAP_PROP_FRAME_COUNT));
-	// enc.encode(block_size);
-	// enc.encode(block_range);
-	// enc.encode(period);
+	// Encode header values to use during decoding.
+	enc.encode(predictor);
+	enc.encode(video.get(CAP_PROP_FRAME_WIDTH));
+	enc.encode(video.get(CAP_PROP_FRAME_HEIGHT));
+	enc.encode(video.get(CAP_PROP_FRAME_COUNT));
+	enc.encode(block_size);
+	enc.encode(block_range);
+	enc.encode(period);
 
-	// //cout << predictor << endl;
-	// //cout << video.get(CAP_PROP_FRAME_WIDTH) << endl;
-	// //cout << video.get(CAP_PROP_FRAME_HEIGHT) << endl;
-	// //cout << 10 << endl;
-	// //cout << block_size << endl;
-	// //cout << block_range << endl;
+	//cout << predictor << endl;
+	//cout << video.get(CAP_PROP_FRAME_WIDTH) << endl;
+	//cout << video.get(CAP_PROP_FRAME_HEIGHT) << endl;
+	//cout << 10 << endl;
+	//cout << block_size << endl;
+	//cout << block_range << endl;
 
-	// int count = 0;
-	// while (true) {
+	int count = 0;
+	while (true) {
 		
-	// 	video >> curr_frame;
-	// 	if (curr_frame.empty()) {break;};
-	// 	if (count%period == 0){
-	// 		intraEncoder(curr_frame, enc, predictor);
-	// 		curr_frame.copyTo(old_frame);
-	// 	}
-	// 	else {
-	// 		interEncoder(old_frame, curr_frame, enc, block_size, block_range);
-	// 	}
-	// 	cout << "Encoded frame " << count << endl;
-	// 	count++;
-	// }
+		video >> curr_frame;
+		if (curr_frame.empty()) {break;};
+		if (count%period == 0){
+			intraEncoder(curr_frame, enc, predictor);
+			curr_frame.copyTo(old_frame);
+		}
+		else {
+			interEncoder(old_frame, curr_frame, enc, block_size, block_range);
+		}
+		cout << "Encoded frame " << count+1 << endl;
+		count++;
+	}
 
-	// enc.finishEncoding();
+	enc.finishEncoding();
 
    	/********************
 	 *  Begin Decoding  *
 	 ********************/
+
 	GolombDecoder dec(dest_file);
+	dec.set_m(3);
 	Mat dec_curr_frame, dec_old_frame;
 
 	int dec_predictor = dec.decode();
@@ -385,12 +404,12 @@ int main() {
 	int dec_block_range = dec.decode();
 	int dec_period = dec.decode();
 
-	//cout << dec_predictor << endl;
-	//cout << dec_width << endl;
-	//cout << dec_height << endl;
-	//cout << dec_n_frames << endl;
-	//cout << dec_block_size << endl;
-	//cout << dec_block_range << endl;
+	cout << dec_predictor << endl;
+	cout << dec_width << endl;
+	cout << dec_height << endl;
+	cout << dec_n_frames << endl;
+	cout << dec_block_size << endl;
+	cout << dec_block_range << endl;
 
 	for (int n = 0; n < dec_n_frames; n++) {
 		cout << "Decoding frame " << n+1 << endl;

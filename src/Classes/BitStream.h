@@ -48,7 +48,7 @@ class BitStream {
 
 		/** \fn 	close
 		 *	\brief 	Closes the currently opened file, flushing the write buffer if needed.
-		 *	If the current file is opened for writting anf the buffer is not yet complete,
+		 *	If the current file is opened for writting and the buffer is not yet complete,
 		 *	writes 0's until the buffer is flushed, then closes the file pointer.
 		 */
 		void close();

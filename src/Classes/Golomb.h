@@ -16,19 +16,25 @@ private:
 	/** BitStream instance that will be used to write bits to a file. */
 	BitStream bitStream;
 	
-	/** Value m of Golomb codes. */
+	/** Parameter m of Golomb codes. */
 	int mEnc;
 
+	/** Value b of Golomb codes ( log2(m) ). */
+	int b;
+
 public:
-	/**	\brief Constructor.
+	/**	\brief Constructor for GolombEncoder class.
 	 * 
 	 * \param file_path String containing the path to the file where the encoded data will be stored.
-	 * \param m Parameter m of Golomb codes
 	 */
-	GolombEncoder(string file_path, int m);
+	GolombEncoder(string file_path);
+
+	void set_m(int m);
+
+	int get_m();
 
 	/** \brief Method used to encoded a signed int.
-	 *	\param num number that will be encoded
+	 *	\param num Integer that will be encoded and written to the output file.
 	 */
 	void encode(int num);
 
@@ -49,16 +55,24 @@ private:
 	/** BitStream instance that will be used to read bits from file. */
 	BitStream bitStream;
 
-	/** Value m of Golomb codes. */
+	/** Parameter m of Golomb codes. */
 	int mEnc;
 
+	/** Value b of Golomb codes ( log2(m) ). */
+	int b;
+
 public:
-	/**	\brief Constructor.
-	 * 	\param file_path String containing the path to the file containing encoded data.
+	/**	\brief Constructor for GolombDecoder class.
+	 * 	\param file_path String containing the path to the file with encoded data.
 	 */
 	GolombDecoder(string path);
 
-	/** \brief Method used to decode one number.
+	void set_m(int m);
+
+	int get_m();
+
+	/** \brief Method used to decode one number from the chosen file.
+	 *  \return Decoded integer.
 	 */
 	int decode();
 };

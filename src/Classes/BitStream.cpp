@@ -51,7 +51,6 @@ void BitStream::writeNBits(int number, int nBits) {
 		cerr << "No input file is currently open." << endl;
 		return;
 	}
-	int nZeros = __builtin_clz(number);
 	int sizeNumber = 32 - __builtin_clz(number);
 
 	if (sizeNumber > nBits) {
@@ -61,7 +60,7 @@ void BitStream::writeNBits(int number, int nBits) {
 
 	for (int n = 0; n < sizeNumber; n++) {
 		writeBit( (number>>n) & 1 );
-	}
+	}	
 
 	int nZerosPad = nBits-sizeNumber;
 	for (int n = 0; n<nZerosPad; n++) {

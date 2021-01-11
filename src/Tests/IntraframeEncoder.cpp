@@ -247,7 +247,7 @@ int main() {
 	Mat frame;
 
 	int predictor = 8;
-	GolombEncoder enc("EncodedIntra.bin", 3);
+	GolombEncoder enc("EncodedIntra.bin");
 
 	enc.encode(predictor);
 	enc.encode(video.get(CAP_PROP_FRAME_WIDTH));
@@ -265,7 +265,7 @@ int main() {
 
 	enc.finishEncoding();
 
-	//decodeVideo("Encoded.bin");
+	decodeVideo("EncodedIntra.bin");
 
 	/*
 	if (argc != 4) {
