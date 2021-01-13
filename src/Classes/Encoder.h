@@ -20,6 +20,8 @@ public:
 
 	int get_predictor();
 
+	int calc_predictor(int a, int b, int c);
+
 	/** \fn 	intraEncoder
 	 *	\brief 	Encode a frame using intraframe predictive coding, based on Golomb codes.
 	 *	
@@ -37,6 +39,8 @@ public:
 	IntraDecoder(GolombDecoder *dec, int predictor);
 
 	IntraDecoder() = default;
+
+	int calc_predictor(int a, int b, int c);
 
 	/**	\fn	intraDecode
 	 * 	\brief	Decodes a frame previously encoded using intraframe encoding.
@@ -62,6 +66,8 @@ public:
 
 	int get_block_range();
 
+	float cost(Mat block);
+
 	void encode(Mat old_frame, Mat curr_frame);
 
 };
@@ -84,27 +90,24 @@ public:
 class HybridEncoder {
 private:
 	VideoCapture video;
-	int width;
-	int height;
-	int n_frames;
+	int video_width;
+	int video_height;
+	int video_n_frames;
 	int predictor;
 	int block_size;
 	int block_range;
 
 public:
-	HybridEncoder(VideoCapture video, string video_name);
+	HybridEncoder(VideoCapture video);
 
-	void encode();
+	int gcd(int x, int y);
+
+	void encode(string output_file);
 };
 
 class HybridDecoder {
 private:
-	GolombDecoder *dec;
-	IntraDecoder intra_dec;
-	InterDecoder inter_dec;
-	int width;
-	int height;
-	int n_frames;
+	string input_file;
 
 public:
 	HybridDecoder(string input_file);

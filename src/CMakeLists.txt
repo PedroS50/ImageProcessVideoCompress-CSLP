@@ -20,6 +20,7 @@ add_executable( RealHybridEncoder Tests/RealHybridEncoder.cpp )
 ]]
 add_executable( IntraframeEncoder_Class Tests/IntraframeEncoder_Class.cpp )
 add_executable( InterframeEncoder_Class Tests/InterframeEncoder_Class.cpp )
+add_executable( HybridEncoder_Class Tests/HybridEncoder_Class.cpp )
 
 add_library( BitStream Classes/BitStream.cpp)
 add_library( Golomb Classes/Golomb.cpp)
@@ -34,6 +35,7 @@ target_include_directories( RealHybridEncoder PUBLIC "${PROJECT_SOURCE_DIR}/Clas
 ]]
 target_include_directories( IntraframeEncoder_Class PUBLIC "${PROJECT_SOURCE_DIR}/Classes" )
 target_include_directories( InterframeEncoder_Class PUBLIC "${PROJECT_SOURCE_DIR}/Classes" )
+target_include_directories( HybridEncoder_Class PUBLIC "${PROJECT_SOURCE_DIR}/Classes" )
 
 #[[target_link_libraries( BitStreamTests BitStream ${OpenCV_LIBS} )
 target_link_libraries( Conversions ${OpenCV_LIBS} )
@@ -45,4 +47,5 @@ target_link_libraries( RealHybridEncoder Encoder Golomb BitStream ${OpenCV_LIBS}
 ]]
 target_link_libraries( IntraframeEncoder_Class Encoder Golomb BitStream ${OpenCV_LIBS} )
 target_link_libraries( InterframeEncoder_Class Encoder Golomb BitStream ${OpenCV_LIBS} )
+target_link_libraries( HybridEncoder_Class Encoder Golomb BitStream ${OpenCV_LIBS} )
 

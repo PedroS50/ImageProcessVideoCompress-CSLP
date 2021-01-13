@@ -4,6 +4,8 @@
 #include <iostream>
 #include <getopt.h>
 
+using namespace cv;
+
 string encode(string video_path) {
 	VideoCapture video = VideoCapture(video_path);
 	string encoded_path = "Encoded.bin";
@@ -57,6 +59,31 @@ void decode(string encoded_path) {
 }
 
 int main() {
-	string encoded = encode("Resources/bgrVideo.avi");
-	decode(encoded);
+	float data[27] = {1,1,2,3,4,5,6,7,8, 1,2,34,5,6,1,6,7,7 ,7,8,9,4,5,6,1,2,3};
+	Mat testMat = Mat::zeros(3, 3, CV_32FC3);
+	int count = 0;
+	
+	for (int ch = 0; ch < 3; ch++) {
+		for (int i = 0; i < 3; i++) {
+			for (int n = 0; n < 3; n++) {
+				testMat.at<Vec3f>(i, n).val[ch] = data[count];
+				count++;
+			}
+		}
+	}
+	cout << testMat << endl;
+	int histSize[3] = {32, 32, 32};
+	float range[] = { -255, 256 }; //the upper boundary is exclusive
+	int channels[3] = {0, 1, 2};
+	Mat hist;
+	const float* histRange[] = { range, range, range };
+	calcHist(&testMat, 1, channels, Mat(), hist, 3, histSize, histRange, true, false);
+	
+	for (MatConstIterator_<double> it = hist.begin<double>(); it != hist.end<double>(); it++) {
+            cout << "Value: " << *it << "\n";
+        }
+	
+	
+	//string encoded = encode("Resources/bgrVideo.avi");
+	//decode(encoded);
 }

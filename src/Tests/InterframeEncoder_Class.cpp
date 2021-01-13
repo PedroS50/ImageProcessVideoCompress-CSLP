@@ -24,18 +24,15 @@ string encode(string video_path) {
 
 	int count = 0;
 	while (true) {
+		video >> curr_frame;
+		if (curr_frame.empty()) {break;};
 		if ( count==0 ) {
-			video >> curr_frame;
 			curr_frame.copyTo(old_frame);
-			if (curr_frame.empty()) {break;};
 
 			intra_enc.encode(curr_frame);
 			
 			cout << "Frame " << count++ << " encoded." << endl;
 		} else {
-			video >> curr_frame;
-			if (curr_frame.empty()) {break;};
-
 			inter_enc.encode(old_frame, curr_frame);
 
 			cout << "Frame " << count++ << " encoded." << endl;
@@ -63,23 +60,16 @@ void decode(string encoded_path) {
 
 	int count = 1;
 	while (count <= n_frames) {
+		curr_frame = Mat::zeros(height, width, CV_8UC3);
 		if ( count==1 ) {
-			curr_frame = Mat::zeros(height, width, CV_8UC3);
 			intra_dec.decode(curr_frame);
 			curr_frame.copyTo(old_frame);
-
-			imshow("Image", curr_frame);
-			if (waitKey(10) == 27) {destroyAllWindows();}; // Wait for a keystroke in the window
-
-			cout << "Decoded frame " << count++ << endl;
 		} else {
-			inter_dec.decode(old_frame, curr_frame);
-
-			imshow("Image", curr_frame);
-			if (waitKey(10) == 27) {destroyAllWindows();}; // Wait for a keystroke in the window
-
-			cout << "Decoded frame " << count++ << endl;
+			inter_dec.decode(old_frame, curr_frame);			
 		}
+		imshow("Image", curr_frame);
+		if (waitKey(10) == 27) {destroyAllWindows();}; // Wait for a keystroke in the window
+		cout << "Decoded frame " << count++ << endl;
 	}
 }
 
