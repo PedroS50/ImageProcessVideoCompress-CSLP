@@ -1,3 +1,9 @@
+/*! \file	HybridEncoder_Class.cpp
+ *	\brief	Hybrid encoder which utilizes the HybridEncoder and HybridDecoder classes
+ *	
+ *	File used for showcasing hybrid encoding classes, encodes a video storing it in the output file
+ *	so that it can then be decoded.
+ */
 #include "opencv2/opencv.hpp"
 #include "Golomb.h"
 #include "Encoder.h"

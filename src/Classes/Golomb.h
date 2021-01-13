@@ -29,8 +29,18 @@ public:
 	 */
 	GolombEncoder(string file_path);
 
+	/** \fn set_m
+	 * 	\brief Set method for property m
+	 * 
+	 * 	\param m Golomb codes parameter that will be set.
+	 */
 	void set_m(int m);
 
+	/** \fn get_m
+	 * 	\brief Get method for property m
+	 * 
+	 * 	\return Integer which represents the parameter of Golomb codes.
+	 */
 	int get_m();
 
 	/** \brief Method used to encoded a signed int.
@@ -67,8 +77,18 @@ public:
 	 */
 	GolombDecoder(string path);
 
+	/** \fn set_m
+	 * 	\brief Set method for property m
+	 * 
+	 * 	\param m Golomb codes parameter that will be set.
+	 */
 	void set_m(int m);
 
+	/** \fn get_m
+	 * 	\brief Get method for property m
+	 * 
+	 * 	\return Integer which represents the parameter of Golomb codes.
+	 */
 	int get_m();
 
 	/** \brief Method used to decode one number from the chosen file.

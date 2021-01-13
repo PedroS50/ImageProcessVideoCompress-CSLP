@@ -347,12 +347,6 @@ HybridEncoder::HybridEncoder(VideoCapture video) {
 	this->block_range = 7;
 }
 
-int HybridEncoder::gcd(int x, int y) {
-   	if (y == 0)
-		return x;
-   	return gcd(y, x % y);
-}
-
 void HybridEncoder::encode(string output_file) {
 	GolombEncoder enc(output_file);
 	
