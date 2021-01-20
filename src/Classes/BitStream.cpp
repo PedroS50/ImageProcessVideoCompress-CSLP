@@ -46,6 +46,7 @@ void BitStream::writeBit(int bit) {
 	}
 }
 
+
 void BitStream::writeNBits(int number, int nBits) {
 	if (!fp.is_open()){
 		cerr << "No input file is currently open." << endl;
@@ -58,14 +59,11 @@ void BitStream::writeNBits(int number, int nBits) {
 		return;
 	}
 
-	for (int n = 0; n < sizeNumber; n++) {
+	for (int n = 0; n < sizeNumber; n++)
 		writeBit( (number>>n) & 1 );
-	}	
 
-	int nZerosPad = nBits-sizeNumber;
-	for (int n = 0; n<nZerosPad; n++) {
+	for (int n = 0; n<nBits-sizeNumber; n++)
 		writeBit(0);
-	}
 }
 
 unsigned char BitStream::readBit() {

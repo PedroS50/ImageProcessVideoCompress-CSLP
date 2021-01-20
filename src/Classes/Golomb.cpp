@@ -31,25 +31,18 @@ void GolombEncoder::encode(int num) {
 	r = num%mEnc;
 	//cout << "r = " << num << " % " << m << " = " << r << "\n";
 
-	for (int i = 0; i<q; i++) {
+	for (int i = 0; i<q; i++)
 		bitStream.writeBit(1);
-	}
 	
 	bitStream.writeBit(0);
 
-	if ( mEnc%2==0 ) {
+	if ( mEnc%2==0 )
 		bitStream.writeNBits(r, b);
-
-	} else {
-
-		if (r < pow(2, b+1)-mEnc) {
+	else
+		if (r < pow(2, b+1)-mEnc)
 			bitStream.writeNBits(r, b);
-
-		} else {
+		else
 			bitStream.writeNBits(r+pow(2, b+1)-mEnc, b+1);
-
-		}
-	}
 }
 
 void GolombEncoder::finishEncoding() {
@@ -88,37 +81,30 @@ int GolombDecoder::decode() {
 	signal = bitStream.readBit() & 1;
 
 	while (true) {
-		bit = bitStream.readBit();
-
-		if ((bit & 1) == 0) 
+		if ((bitStream.readBit() & 1) == 0) 
 			break;
 		q++;
 	}
 
-	if ( mEnc%2==0 ) {
-		r = bitStream.readNBits(b);
-		num = q*mEnc+r;
+	r = bitStream.readNBits(b);
+	num = q*mEnc+r;
+
+	if ( mEnc%2==0 )
 		if (!signal)
-			return num; 
+			return num;
 		else
 			return -1*num;
-	}
-	else {
-		r = bitStream.readNBits(b);
-
+	else
 		if (r < pow(2, b+1)-mEnc) {
-			num = q*mEnc+r;
 			if (!signal)
 				return num; 
 			else
 				return -1*num;
 		} else {
-			int val = (bitStream.readBit()&1);
-			num = q*mEnc + ( 2*r+val ) - pow(2, b+1)+mEnc;
+			num = q*mEnc + ( 2*r + (bitStream.readBit()&1) ) - pow(2, b+1)+mEnc;
 			if (!signal)
 				return num; 
 			else
 				return -1*num;
 		}
-	}
 }

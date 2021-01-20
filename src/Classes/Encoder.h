@@ -245,6 +245,7 @@ public:
 	 * 	\param output_file File in which the encoded data will be stored.
 	*/
 	void encode(string output_file);
+	Mat encodeyuv(Mat &img); 
 };
 
 /** \class HybridDecoder
@@ -270,6 +271,7 @@ public:
 	 * 	All necessary properties are read from the encoded file.
 	*/
 	void decode();
+	Mat decodeyuv(Mat &img);
 };
 
 #endif

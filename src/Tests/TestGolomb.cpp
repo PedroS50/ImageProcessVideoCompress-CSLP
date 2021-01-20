@@ -6,6 +6,20 @@
 using namespace std;
 
 int main( int argc, char** argv) {
+	GolombEncoder enc("golenc.bin");
+
+	for (int i = 15; i > -15; i--) {
+		enc.encode(i);
+	}
+
+	enc.finishEncoding();
+
+	GolombDecoder dec("golenc.bin");
+
+	for (int i = 0; i < 30; i++) {
+		cout << dec.decode() << endl;
+	}
+	/*
 	int m = 9;
 	int predictor = 8;
 	int block_size = 16;
@@ -21,11 +35,6 @@ int main( int argc, char** argv) {
 	enc.encode(block_size);
 	enc.encode(block_range);
 	enc.encode(period);
-	enc.encode(-14321);
-	enc.encode(0);
-	enc.encode(0);
-	enc.encode(-43);
-	enc.encode(0);
 	enc.finishEncoding();
 
 	GolombDecoder dec("golenc.bin");
@@ -50,6 +59,7 @@ int main( int argc, char** argv) {
 	cout << dec.decode() << endl;
 	cout << dec.decode() << endl;
 	cout << dec.decode() << endl;
+	*/
 
 	/*
 	GolombEncoder enc("Encoded.bin", 2);
