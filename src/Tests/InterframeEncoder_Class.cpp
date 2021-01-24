@@ -3,10 +3,12 @@
 #include "Encoder.h"
 #include <iostream>
 #include <getopt.h>
+#include "FormatConverter.h"
 
-string encode(string video_path) {
+string encode(string video_path, int format=3) {
 	string encoded_path = "Encoded.bin";
 	VideoCapture video = VideoCapture(video_path);
+	FormatConverter conv;
 
 	GolombEncoder enc(encoded_path);
 	InterEncoder inter_enc(&enc, 32, 5);
@@ -15,27 +17,92 @@ string encode(string video_path) {
 	Mat curr_frame;
 	Mat old_frame;
 
+	enc.encode(format);
 	enc.encode(8);
 	enc.encode(32);
 	enc.encode(10);
-	enc.encode(video.get(CAP_PROP_FRAME_WIDTH));
-	enc.encode(video.get(CAP_PROP_FRAME_HEIGHT));
 	enc.encode(video.get(CAP_PROP_FRAME_COUNT));
 
 	int count = 0;
-	while (true) {
-		video >> curr_frame;
-		if (curr_frame.empty()) {break;};
-		if ( count==0 ) {
-			curr_frame.copyTo(old_frame);
+	switch (format) {
+		case 0: {
+			while (true) {
+				video >> curr_frame;
+				if (curr_frame.empty()) {break;};
 
-			intra_enc.encode(curr_frame);
-			
-			cout << "Frame " << count++ << " encoded." << endl;
-		} else {
-			inter_enc.encode(old_frame, curr_frame);
+				if (count==0) {
+					enc.encode(curr_frame.cols);
+					enc.encode(curr_frame.rows);
+					curr_frame.copyTo(old_frame);
+					intra_enc.encode(curr_frame);
+					cout << "Encoded frame " << count++ << endl;
+					continue;
+				}
 
-			cout << "Frame " << count++ << " encoded." << endl;
+				inter_enc.encode(old_frame, curr_frame);
+				cout << "Encoded frame " << count++ << endl;
+			}
+			break;
+		}
+		case 1: {
+			while (true) {
+				video >> curr_frame;
+				if (curr_frame.empty()) {break;};
+				curr_frame = conv.rgb_to_yuv444(curr_frame);
+
+				if (count==0) {
+					enc.encode(curr_frame.cols);
+					enc.encode(curr_frame.rows);
+					curr_frame.copyTo(old_frame);
+					intra_enc.encode(curr_frame);
+					cout << "Encoded frame " << count++ << endl;
+					continue;
+				}
+
+				inter_enc.encode(old_frame, curr_frame);
+				cout << "Encoded frame " << count++ << endl;
+			}
+			break;
+		}
+		case 2: {
+			while (true) {
+				video >> curr_frame;
+				if (curr_frame.empty()) {break;};
+				curr_frame = conv.rgb_to_yuv422(curr_frame);
+
+				if (count==0) {
+					enc.encode(curr_frame.cols);
+					enc.encode(curr_frame.rows);
+					curr_frame.copyTo(old_frame);
+					intra_enc.encode(curr_frame);
+					cout << "Encoded frame " << count++ << endl;
+					continue;
+				}
+
+				inter_enc.encode(old_frame, curr_frame);
+				cout << "Encoded frame " << count++ << endl;
+			}
+			break;
+		}
+		case 3: {
+			while (true) {
+				video >> curr_frame;
+				if (curr_frame.empty()) {break;};
+				curr_frame = conv.rgb_to_yuv420(curr_frame);
+
+				if (count==0) {
+					enc.encode(curr_frame.cols);
+					enc.encode(curr_frame.rows);
+					curr_frame.copyTo(old_frame);
+					intra_enc.encode(curr_frame);
+					cout << "Encoded frame " << count++ << endl;
+					continue;
+				}
+
+				inter_enc.encode(old_frame, curr_frame);
+				cout << "Encoded frame " << count++ << endl;
+			}
+			break;
 		}
 	}
 
@@ -45,31 +112,91 @@ string encode(string video_path) {
 
 void decode(string encoded_path) {
 	GolombDecoder dec(encoded_path);
+	FormatConverter conv;
 
+	int format = dec.decode();
 	int predictor = dec.decode();
 	int block_size = dec.decode();
 	int block_range = dec.decode();
+	int n_frames = dec.decode();
 	int width = dec.decode();
 	int height = dec.decode();
-	int n_frames = dec.decode();
-
+	
 	Mat curr_frame;
 	Mat old_frame;
 	IntraDecoder intra_dec(&dec, predictor);
 	InterDecoder inter_dec(&dec, block_size, block_range);
 
 	int count = 1;
-	while (count <= n_frames) {
-		curr_frame = Mat::zeros(height, width, CV_8UC3);
-		if ( count==1 ) {
-			intra_dec.decode(curr_frame);
-			curr_frame.copyTo(old_frame);
-		} else {
-			inter_dec.decode(old_frame, curr_frame);			
+	switch (format) {
+		case 0: {
+			while (count < n_frames) {
+				curr_frame = Mat::zeros(height, width, CV_8UC3);
+
+				if (count==0){
+					intra_dec.decode(curr_frame);
+					curr_frame.copyTo(old_frame);
+				}
+				else {
+					inter_dec.decode(old_frame, curr_frame);
+				}
+
+				imshow("Image", curr_frame);
+				if (waitKey(10) == 27) {destroyAllWindows();}; // Wait for a keystroke in the window
+				cout << "Frame " << count++ << " decoded." << endl;
+			}
 		}
-		imshow("Image", curr_frame);
-		if (waitKey(10) == 27) {destroyAllWindows();}; // Wait for a keystroke in the window
-		cout << "Decoded frame " << count++ << endl;
+		case 1: {
+			while (count < n_frames) {
+				curr_frame = Mat::zeros(height, width, CV_8UC3);
+
+				if (count==0){
+					intra_dec.decode(curr_frame);
+					curr_frame.copyTo(old_frame);
+				}
+				else {
+					inter_dec.decode(old_frame, curr_frame);
+				}
+
+				imshow("Image", conv.yuv444_to_rgb(curr_frame));
+				if (waitKey(10) == 27) {destroyAllWindows();}; // Wait for a keystroke in the window
+				cout << "Frame " << count++ << " decoded." << endl;
+			}
+		}
+		case 2: {
+			while (count < n_frames) {
+				curr_frame = Mat::zeros(height, width, CV_8UC1);
+
+				if (count==0){
+					intra_dec.decode(curr_frame);
+					curr_frame.copyTo(old_frame);
+				}
+				else {
+					inter_dec.decode(old_frame, curr_frame);
+				}
+
+				imshow("Image", conv.yuv422_to_rgb(curr_frame));
+				if (waitKey(10) == 27) {destroyAllWindows();}; // Wait for a keystroke in the window
+				cout << "Frame " << count++ << " decoded." << endl;
+			}
+		}
+		case 3: {
+			while (count < n_frames) {
+				curr_frame = Mat::zeros(height, width, CV_8UC1);
+
+				if (count==0){
+					intra_dec.decode(curr_frame);
+					curr_frame.copyTo(old_frame);
+				}
+				else {
+					inter_dec.decode(old_frame, curr_frame);
+				}
+
+				imshow("Image", curr_frame);
+				if (waitKey(10) == 27) {destroyAllWindows();}; // Wait for a keystroke in the window
+				cout << "Frame " << count++ << " decoded." << endl;
+			}
+		}
 	}
 }
 
@@ -98,6 +225,6 @@ int main() {
 				testMat3.at<Vec3b>(i,n).val[ch] = testMat2.at<Vec3b>(i,n).val[ch] - testMat.at<Vec3b>(i,n).val[ch];
 	cout << testMat3 << endl;
 	*/
-	string encoded = encode("Resources/bgrVideo.avi");
+	string encoded = encode("Resources/akiyo_cif.y4m");
 	decode(encoded);
 }

@@ -218,6 +218,7 @@ class HybridEncoder {
 private:
 	/** Video to be encoded. */
 	VideoCapture video;
+	int format;
 	/** Width of the video. */
 	int video_width;
 	/** Height of the video. */
@@ -237,7 +238,7 @@ public:
 	 * 	
 	 * 	\param video Video which will be encoded.
 	 */
-	HybridEncoder(VideoCapture video);
+	HybridEncoder(VideoCapture video, string format="yuv420");
 
 	/** \fn encode 
 	 * 	\brief Method used to encoded the chosen video using hybrid encoding (inter and intra frame).

@@ -14,6 +14,8 @@ public:
 	FormatConverter();
 	Mat rgb_to_yuv420(Mat &frame);
 	Mat yuv420_to_rgb(Mat &frame);
+	Mat rgb_to_yuv422(Mat &frame);
+	Mat yuv422_to_rgb(Mat &frame);
 	Mat rgb_to_yuv444(Mat &frame);
 	Mat yuv444_to_rgb(Mat &frame);
 };
