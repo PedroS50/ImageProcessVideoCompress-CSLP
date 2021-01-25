@@ -55,7 +55,7 @@ public:
 	 *	
 	 *	\param frame 	Frame that will be encoded.
 	 */
-	void encode(Mat &frame);
+	int encode(Mat &frame);
 };
 
 /** \class IntraDecoder
@@ -98,7 +98,7 @@ public:
 	 * 
 	 * 	\param frame	Mat where the decoded data is stored.
 	 */
-	void decode(Mat &frame);
+	int decode(Mat &frame);
 };
 
 /** \class InterEncoder
@@ -163,7 +163,7 @@ public:
 	 * 	\param old_frame Frame which will serve as reference when calculating error values.
 	 * 	\param curr_frame Frame which is being encoded.
 	 */
-	void encode(Mat old_frame, Mat curr_frame);
+	int encode(Mat old_frame, Mat curr_frame);
 
 };
 
@@ -205,7 +205,7 @@ public:
 	 * 	\param old_frame Reference frame used while encoding the current frame.
 	 * 	\param curr_frame Mat that will store the decoded frame.
 	 */
-	void decode(Mat old_frame, Mat &curr_frame);
+	int decode(Mat old_frame, Mat &curr_frame);
 
 };
 

@@ -188,7 +188,7 @@ int main() {
 	for (MatConstIterator_<double> it = hist.begin<double>(); it != hist.end<double>(); it++) {
             cout << "Value: " << *it << "\n";
         }
-		*/
+	*/
 	
 	
 	string encoded = encode("Resources/akiyo_cif.y4m");

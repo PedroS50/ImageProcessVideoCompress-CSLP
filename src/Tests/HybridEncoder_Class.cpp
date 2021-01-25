@@ -11,7 +11,7 @@
 
 int main() {
 	string output = "Encoded.bin";
-	VideoCapture video = VideoCapture("Resources/akiyo_cif.y4m");
+	VideoCapture video = VideoCapture("Resources/ducks50.y4m");
 
 	// Encode video
 	HybridEncoder enc(video, "yuv422");

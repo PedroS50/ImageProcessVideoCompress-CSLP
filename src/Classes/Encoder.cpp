@@ -47,7 +47,7 @@ int IntraEncoder::calc_predictor(int a, int b, int c) {
 	}
 }
 
-void IntraEncoder::encode(cv::Mat &frame) {
+int IntraEncoder::encode(cv::Mat &frame) {
 	/** Previous pixel color value. */
 	int a;
 	/** Above pixel color value. */
@@ -55,61 +55,61 @@ void IntraEncoder::encode(cv::Mat &frame) {
 	/** Diagonally previous color value. */
 	int c;
 
-	int size = frame.rows*frame.cols*frame.channels();
+	int n_ch = frame.channels();
+
+	int size = frame.rows*frame.cols*n_ch;
 
 	int mEnc;
+
+	int frame_cost = 0;
 
 	// Matrix where the padded frame is stored.
 	Mat image;
 	Mat aux_frame;
-	if (frame.type()==CV_8UC3) {
+
+	if (n_ch==3) {
 		hconcat(Mat::zeros(frame.rows, 1, CV_8UC3), frame, image);
 		vconcat(Mat::zeros(1, frame.cols+1, CV_8UC3), image, image);
 		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_16SC3);
-	} else if (frame.type()==CV_8UC1) {
+	} else if (n_ch==1) {
 		hconcat(Mat::zeros(frame.rows, 1, CV_8UC1), frame, image);
 		vconcat(Mat::zeros(1, frame.cols+1, CV_8UC1), image, image);
 		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_16SC1);
 	}
-	/** Frame data pointer. */
-	//unsigned char *pFrameData = (unsigned char*)(image.data);
-	//short *pAuxFrameData = (short*)(aux_frame.data);
-	// Iterate through height, width and channel.
+
 	for (int i = 1; i < image.rows; i++) {
 		for (int n = 1; n < image.cols; n++) {
-			for (int ch = 0; ch < frame.channels() ; ch++) {
+			for (int ch = 0; ch < n_ch ; ch++) {
 				// Retrieve values from frame.
 				a = image.ptr<uchar>(i, n-1)[ch];
 				b = image.ptr<uchar>(i-1, n)[ch];
 				c = image.ptr<uchar>(i-1, n-1)[ch];
-				//a = pFrameData[image.channels() * (image.cols * i + (n-1)) + ch];
-				//b = pFrameData[image.channels() * (image.cols * (i-1) + n) + ch];
-				//c = pFrameData[image.channels() * (image.cols * (i-1) + (n-1)) + ch];
 
 				// Store Error = estimate - real value.
-				enc->encode(image.ptr<uchar>(i, n)[ch] - this->calc_predictor(a,b,c));
-				//enc->encode(pFrameData[image.channels() * (image.cols * i + (n)) + ch] - this->calc_predictor(a,b,c));
-				//pAuxFrameData[aux_frame.channels() * (aux_frame.cols * (i-1) + (n-1)) + ch] = pFrameData[image.channels() * (image.cols * i + (n)) + ch] - this->calc_predictor(a,b,c);
+				aux_frame.ptr<short>(i-1, n-1)[ch] = image.ptr<uchar>(i, n)[ch] - this->calc_predictor(a,b,c);
 			}
 		}
 	}
 
 	// Calculate optimal m...
-	//mEnc = 4;
+	mEnc = enc->optimal_m(aux_frame);
 
-	//if (enc->get_m() == mEnc)
-	//	enc->encode(0);
-	//else
-	//	enc->encode(mEnc);
+	// If m stays the same encode 0, otherwise, encode m
+	if (enc->get_m() == mEnc) {
+		enc->encode(0);
+	} else {
+		enc->encode(mEnc);
+		enc->set_m(mEnc);
+	}
 
-	//enc->set_m(mEnc);
+	for (int i = 0; i < aux_frame.rows; i++)
+		for (int n = 0; n < aux_frame.cols; n++)
+			for (int ch = 0; ch < n_ch ; ch++) {
+				frame_cost+=abs(aux_frame.ptr<short>(i, n)[ch]);
+				enc->encode( aux_frame.ptr<short>(i, n)[ch] );
+			}
 
-	//for (int i = 0; i < size; i++)
-	//	enc->encode( pAuxFrameData[i] );
-	//for (int i = 0; i < aux_frame.rows; i++)
-	//	for (int n = 0; n < aux_frame.cols; n++)
-	//		for (int ch = 0; ch < 3 ; ch++)
-	//			enc->encode( pAuxFrameData[aux_frame.channels() * (aux_frame.cols * i + (n)) + ch] );
+	 return frame_cost/size;
 }
 
 IntraDecoder::IntraDecoder(GolombDecoder *dec, int predictor) {
@@ -153,15 +153,15 @@ int IntraDecoder::calc_predictor(int a, int b, int c) {
 	}
 }
 
-void IntraDecoder::decode(Mat &frame) {
+int IntraDecoder::decode(Mat &frame) {
 	int m;
 	unsigned char a, b, c;
-	//unsigned char *pFrameData = (unsigned char*)(frame.data);
+
+	int frame_cost = 0;
+	int err;
 
 	// Retrieve parameter m
-	//m = dec->decode();
-	//if (m != 0)
-	//	dec->set_m(m);
+	dec->set_m(dec->decode());
 
 	for (int i = 0; i < frame.rows; i++) {
 		for (int n = 0; n < frame.cols; n++) {
@@ -171,25 +171,25 @@ void IntraDecoder::decode(Mat &frame) {
 					a = 0;
 				else
 					a = frame.ptr<uchar>(i, n-1)[ch];
-					//a = pFrameData[frame.channels() * (frame.cols * i + (n-1)) + ch];
 				
 				if (i == 0)
 					b = 0;
 				else
 					b = frame.ptr<uchar>(i-1, n)[ch];
-					//b = pFrameData[frame.channels() * (frame.cols * (i-1) + n) + ch];
 				
 				if (i == 0 || n == 0)
 					c = 0;
 				else
 					c = frame.ptr<uchar>(i-1, n-1)[ch];
-					//c = pFrameData[frame.channels() * (frame.cols * (i-1) + (n-1)) + ch];
 
-				frame.ptr<uchar>(i, n)[ch] = this->calc_predictor(a,b,c) + dec->decode();
-				//pFrameData[frame.channels() * (frame.cols * i + n) + ch] = this->calc_predictor(a,b,c) + dec->decode();
+				err = dec->decode();
+				frame_cost += abs(err);
+				frame.ptr<uchar>(i, n)[ch] = this->calc_predictor(a,b,c) + err;
 			}
 		}
 	}
+
+	return frame_cost/(frame.rows*frame.cols*frame.channels());
 }
 
 InterEncoder::InterEncoder(GolombEncoder *enc, int block_size, int block_range) {
@@ -208,10 +208,10 @@ int InterEncoder::get_block_range() {
 }
 
 float InterEncoder::cost(Mat block) {
-	return abs(sum(sum(block))[0]);
+	return sum(sum(abs(block)))[0];
 }
 
-void InterEncoder::encode(Mat old_frame, Mat curr_frame) {
+int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 	/** Block with error values. */
 	Mat block_diff;
 	/** Block with error values which minizes min_diff. */
@@ -219,26 +219,27 @@ void InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 	/** Frame that will store error values so they can later be processed and encoded. */
 	Mat aux_frame;
 
-	if (curr_frame.type()==CV_8UC3) {
+	int n_ch = curr_frame.channels();
+
+	if ( n_ch==3 ) {
 		block_diff = Mat::zeros(block_size, block_size, CV_16SC3);
 		aux_frame = Mat::zeros(curr_frame.rows, curr_frame.cols, CV_16SC3);
-	} else if (curr_frame.type()==CV_8UC1) {
+	} else if ( n_ch==1 ) {
 		block_diff = Mat::zeros(block_size, block_size, CV_16SC1);
 		aux_frame = Mat::zeros(curr_frame.rows, curr_frame.cols, CV_16SC1);
 	}
 
-	/** Current frame's data pointer. */
-	//unsigned char *pCurrFrameData = (unsigned char*)(curr_frame.data);
-	/** Previous frame's data pointer. */
-	//unsigned char *pOldFrameData = (unsigned char*)(old_frame.data);
-	/** Pointer to Mat which stores error values. */
-	//short *pAuxFrameData = (short*)(aux_frame.data);
 
 	/** Sum of matrix that corresponds to the minimum difference between current frame's block
 	 *	and previous frame's block. */
 	int min_diff;
 	/** Absolute value of difference between previous frame's block a current fram'es block. */
 	int min_block_sum;
+
+	int frame_cost = 0;
+
+	int mEnc;
+
 	/** x coordinate of previous frame's block which minimizes error. */
 	int min_x;
 	/** y coordinate of previous frame's block which minimizes error. */
@@ -264,7 +265,7 @@ void InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 
 							for (int i = 0; i < block_size; i++)
 								for (int j = 0; j < block_size; j++)
-									for (int ch = 0; ch < curr_frame.channels(); ch++)
+									for (int ch = 0; ch < n_ch; ch++)
 										block_diff.ptr<short>(i, j)[ch] = curr_frame.ptr<uchar>(curr_y+i, curr_x+j)[ch] - old_frame.ptr<uchar>(old_y+i, old_x+j)[ch];
 										//block_diff.at<Vec3s>(i,j).val[ch] = pCurrFrameData[curr_frame.channels() * (curr_frame.cols * (curr_y+i) + (curr_x+j)) + ch]-pOldFrameData[old_frame.channels() * (old_frame.cols * (old_y+i) + (old_x+j)) + ch];
 							//min_block_sum = this->cost(block_diff);
@@ -285,23 +286,30 @@ void InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 						break;
 				}
 			// Encode blocks coordinates.
-			enc->encode(min_x);
-			enc->encode(min_y);
-			//locations[count++] = min_x;
-			//locations[count++] = min_y;
+			//enc->encode(min_x);
+			//enc->encode(min_y);
+			locations[count++] = min_x;
+			locations[count++] = min_y;
 
-			
 			// Encode error between blocks. 
 			for (int i = 0; i < block_size; i++)
 				for (int j = 0; j < block_size; j++)
-					for (int ch = 0; ch < curr_frame.channels(); ch++)
-						enc->encode(min_block_diff.ptr<short>(i, j)[ch]);
-						//enc->encode(min_block_diff.at<Vec3s>(i,j).val[ch]);
-					//aux_frame.at<Vec3s>(curr_y+i,curr_x+j) = min_block_diff.at<Vec3s>(i,j);
-						//pAuxFrameData[aux_frame.channels() * (aux_frame.cols * (curr_y+i)+(curr_x+j))+ch] = min_block_diff.at<Vec3s>(i,j).val[ch];
+					for (int ch = 0; ch < n_ch; ch++)
+						aux_frame.ptr<short>(curr_y+i,curr_x+j)[ch] = min_block_diff.ptr<short>(i,j)[ch];
 		}
 	}
-	/*
+
+	// Calculate optimal m...
+	mEnc = enc->optimal_m(aux_frame);
+
+	// If m stays the same encode 0, otherwise, encode m
+	if (enc->get_m() == mEnc) {
+		enc->encode(0);
+	} else {
+		enc->encode(mEnc);
+		enc->set_m(mEnc);
+	}
+
 	count = 0;
 	for (int curr_y = 0; curr_y <= max_y; curr_y += block_size)
 		for (int curr_x = 0; curr_x <= max_x; curr_x += block_size) {
@@ -309,20 +317,13 @@ void InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 			enc->encode(locations[count++]);
 			for (int i = 0; i < block_size; i++)
 				for (int j = 0; j < block_size; j++)
-					for (int ch = 0; ch < 3; ch++) {
-						enc->encode(aux_frame.at<Vec3s>(curr_y+i, curr_x+j).val[ch]);
+					for (int ch = 0; ch < n_ch; ch++) {
+						frame_cost+=abs(aux_frame.ptr<short>(curr_y+i, curr_x+j)[ch]);
+						enc->encode(aux_frame.ptr<short>(curr_y+i, curr_x+j)[ch]);
 					}
 		}
-	*/
 
-	//for (int i = 0; i < curr_frame.rows; i++)
-	//	for (int j = 0; j < curr_frame.cols; j++)
-	//		for (int ch = 0; ch < 3; ch++)
-	//			enc->encode(aux_frame.at<Vec3s>(i, j).val[ch]);
-
-	// Calculate optimal m, verify if encoding should be intra or inter
-	//for (int i = 0; i < size; i++)
-	//	enc->encode(pAuxFrameData[i]);
+	return frame_cost/(curr_frame.rows*curr_frame.cols*n_ch);
 }
 
 InterDecoder::InterDecoder(GolombDecoder *dec, int block_size, int block_range) {
@@ -332,7 +333,7 @@ InterDecoder::InterDecoder(GolombDecoder *dec, int block_size, int block_range) 
 
 }
 
-void InterDecoder::decode(Mat old_frame, Mat &curr_frame) {
+int InterDecoder::decode(Mat old_frame, Mat &curr_frame) {
 	/** Previous frame's block. */
 	Mat old_block;
 	/** Previous frame's block. */
@@ -347,8 +348,14 @@ void InterDecoder::decode(Mat old_frame, Mat &curr_frame) {
 	/** y coordinate of previous frame's block which minimizes error. */
 	int old_y;
 
-	//unsigned char *pOldFrameData = (unsigned char*)(old_frame.data);
-	//unsigned char *pCurrFrameData = (unsigned char*)(curr_frame.data);
+	int m;
+
+	int err;
+
+	int frame_cost = 0;
+
+	// Retrieve parameter m
+	dec->set_m(dec->decode());
 
 	for (int curr_y = 0; curr_y <= max_y; curr_y += block_size) {
 		for (int curr_x = 0; curr_x <= max_x; curr_x += block_size) {
@@ -357,11 +364,15 @@ void InterDecoder::decode(Mat old_frame, Mat &curr_frame) {
 
 			for (int i = curr_y; i < curr_y+block_size; i++)
 				for (int j = curr_x; j < curr_x+block_size; j++)
-					for (int ch = 0; ch < curr_frame.channels(); ch++)
-						curr_frame.ptr<uchar>(i, j)[ch] = old_frame.ptr<uchar>(old_y+i-curr_y, old_x+j-curr_x)[ch] + dec->decode();
-						//pCurrFrameData[curr_frame.channels() * (curr_frame.cols * i + j) + ch] = pOldFrameData[old_frame.channels() * (old_frame.cols * (old_y+i-curr_y) + (old_x+j-curr_x)) + ch] + dec->decode();
+					for (int ch = 0; ch < curr_frame.channels(); ch++) {
+						err = dec->decode();
+						frame_cost+=abs(err);
+						curr_frame.ptr<uchar>(i, j)[ch] = old_frame.ptr<uchar>(old_y+i-curr_y, old_x+j-curr_x)[ch] + err;
+					}
 		}
 	}
+
+	return frame_cost/(curr_frame.rows*curr_frame.cols*curr_frame.channels());
 }
 
 HybridEncoder::HybridEncoder(VideoCapture video, string format) {
@@ -383,7 +394,7 @@ HybridEncoder::HybridEncoder(VideoCapture video, string format) {
 	// Calculate optimal parameters...
 	this->predictor = 8;
 	this->block_size = 16;
-	this->block_range = 4;
+	this->block_range = 7;
 }
 
 void HybridEncoder::encode(string output_file) {
@@ -400,9 +411,12 @@ void HybridEncoder::encode(string output_file) {
 	enc.encode(predictor);
 	enc.encode(block_size);
 	enc.encode(block_range);
-	enc.encode(5);
+	enc.encode(20);
+	//enc.encode(50);
 	enc.encode(video_n_frames);
 
+	int old_frame_cost = 0;
+	int curr_frame_cost = 1;
 	int count = 0;
 	switch (format) {
 		case 0: {
@@ -415,13 +429,15 @@ void HybridEncoder::encode(string output_file) {
 					enc.encode(curr_frame.rows);
 				}
 
-				if (count%5 == 0) {
+				if ( curr_frame_cost > old_frame_cost || count%20==0 ) {
+					cout << "Intra!" << endl;
 					curr_frame.copyTo(old_frame);
-					intra_enc.encode(curr_frame);
+					curr_frame_cost = intra_enc.encode(curr_frame);
+					old_frame_cost = curr_frame_cost;
+				} else {
+					curr_frame_cost = inter_enc.encode(old_frame, curr_frame);
 				}
-				else {
-					inter_enc.encode(old_frame, curr_frame);
-				}
+
 				cout << "Encoded frame " << count++ << endl;
 			}
 			break;
@@ -437,12 +453,13 @@ void HybridEncoder::encode(string output_file) {
 					enc.encode(curr_frame.rows);
 				}
 
-				if (count%5 == 0) {
+				if ( curr_frame_cost > old_frame_cost || count%20==0 ) {
+					cout << "Intra!" << endl;
 					curr_frame.copyTo(old_frame);
-					intra_enc.encode(curr_frame);
-				}
-				else {
-					inter_enc.encode(old_frame, curr_frame);
+					curr_frame_cost = intra_enc.encode(curr_frame);
+					old_frame_cost = curr_frame_cost;
+				} else {
+					curr_frame_cost = inter_enc.encode(old_frame, curr_frame);
 				}
 				cout << "Encoded frame " << count++ << endl;
 			}
@@ -459,12 +476,13 @@ void HybridEncoder::encode(string output_file) {
 					enc.encode(curr_frame.rows);
 				}
 
-				if (count%5 == 0) {
+				if ( curr_frame_cost > old_frame_cost || count%20==0 ) {
+					cout << "Intra!" << endl;
 					curr_frame.copyTo(old_frame);
-					intra_enc.encode(curr_frame);
-				}
-				else {
-					inter_enc.encode(old_frame, curr_frame);
+					curr_frame_cost = intra_enc.encode(curr_frame);
+					old_frame_cost = curr_frame_cost;
+				} else {
+					curr_frame_cost = inter_enc.encode(old_frame, curr_frame);
 				}
 				cout << "Encoded frame " << count++ << endl;
 			}
@@ -481,12 +499,13 @@ void HybridEncoder::encode(string output_file) {
 					enc.encode(curr_frame.rows);
 				}
 
-				if (count%5 == 0) {
+				if ( curr_frame_cost > old_frame_cost || count%20==0 ) {
+					cout << "Intra!" << endl;
 					curr_frame.copyTo(old_frame);
-					intra_enc.encode(curr_frame);
-				}
-				else {
-					inter_enc.encode(old_frame, curr_frame);
+					curr_frame_cost = intra_enc.encode(curr_frame);
+					old_frame_cost = curr_frame_cost;
+				} else {
+					curr_frame_cost = inter_enc.encode(old_frame, curr_frame);
 				}
 				cout << "Encoded frame " << count++ << endl;
 			}
@@ -513,6 +532,7 @@ void HybridDecoder::decode() {
 	int n_frames = dec.decode();
 	int width = dec.decode();
 	int height = dec.decode();
+
 	cout << endl;
 	cout << "Parameter m: " << dec.get_m() << endl;
 	cout << "Predictor: " << predictor << endl;
@@ -527,18 +547,22 @@ void HybridDecoder::decode() {
 	Mat curr_frame;
 	Mat old_frame;
 
+	int old_frame_cost = 0;
+	int curr_frame_cost = 1;
 	int count = 0;
 	switch (format) {
 		case 0: {
 			while (count < n_frames) {
 				curr_frame = Mat::zeros(height, width, CV_8UC3);
 
-				if (count%period==0){
-					intra_dec.decode(curr_frame);
+				if ( curr_frame_cost > old_frame_cost || count%period==0 ) {
+					cout << "Intra!" << endl;
+					curr_frame_cost = intra_dec.decode(curr_frame);
+					old_frame_cost = curr_frame_cost;
 					curr_frame.copyTo(old_frame);
 				}
 				else {
-					inter_dec.decode(old_frame, curr_frame);
+					curr_frame_cost = inter_dec.decode(old_frame, curr_frame);
 				}
 
 				imshow("Image", curr_frame);
@@ -550,12 +574,14 @@ void HybridDecoder::decode() {
 			while (count < n_frames) {
 				curr_frame = Mat::zeros(height, width, CV_8UC3);
 
-				if (count%period==0){
-					intra_dec.decode(curr_frame);
+				if ( curr_frame_cost > old_frame_cost || count%period==0 ) {
+					cout << "Intra!" << endl;
+					curr_frame_cost = intra_dec.decode(curr_frame);
+					old_frame_cost = curr_frame_cost;
 					curr_frame.copyTo(old_frame);
 				}
 				else {
-					inter_dec.decode(old_frame, curr_frame);
+					curr_frame_cost = inter_dec.decode(old_frame, curr_frame);
 				}
 
 				imshow("Image", conv.yuv444_to_rgb(curr_frame));
@@ -567,12 +593,14 @@ void HybridDecoder::decode() {
 			while (count < n_frames) {
 				curr_frame = Mat::zeros(height, width, CV_8UC1);
 
-				if (count%period==0){
-					intra_dec.decode(curr_frame);
+				if ( curr_frame_cost > old_frame_cost || count%period==0 ) {
+					cout << "Intra!" << endl;
+					curr_frame_cost = intra_dec.decode(curr_frame);
+					old_frame_cost = curr_frame_cost;
 					curr_frame.copyTo(old_frame);
 				}
 				else {
-					inter_dec.decode(old_frame, curr_frame);
+					curr_frame_cost = inter_dec.decode(old_frame, curr_frame);
 				}
 
 				imshow("Image", conv.yuv422_to_rgb(curr_frame));
@@ -584,12 +612,14 @@ void HybridDecoder::decode() {
 			while (count < n_frames) {
 				curr_frame = Mat::zeros(height, width, CV_8UC1);
 
-				if (count%period==0){
-					intra_dec.decode(curr_frame);
+				if ( curr_frame_cost > old_frame_cost || count%period==0 ) {
+					cout << "Intra!" << endl;
+					curr_frame_cost = intra_dec.decode(curr_frame);
+					old_frame_cost = curr_frame_cost;
 					curr_frame.copyTo(old_frame);
 				}
 				else {
-					inter_dec.decode(old_frame, curr_frame);
+					curr_frame_cost = inter_dec.decode(old_frame, curr_frame);
 				}
 
 				imshow("Image", conv.yuv420_to_rgb(curr_frame));

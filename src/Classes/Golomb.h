@@ -5,6 +5,8 @@
 #include "opencv2/opencv.hpp"
 #include "BitStream.h"
 
+using namespace cv;
+
 /** \class GolombEncoder
  *	\brief Class used to encode numbers to a file using Golomb codes.
  *	
@@ -42,6 +44,8 @@ public:
 	 * 	\return Integer which represents the parameter of Golomb codes.
 	 */
 	int get_m();
+
+	int optimal_m(Mat &frame);
 
 	/** \brief Method used to encoded a signed int.
 	 *	\param num Integer that will be encoded and written to the output file.

@@ -1,4 +1,7 @@
 #include "Golomb.h"
+#include "opencv2/opencv.hpp"
+
+using namespace cv;
 
 GolombEncoder::GolombEncoder(string file_path) {
 	bitStream.setToWrite(file_path);
@@ -6,6 +9,9 @@ GolombEncoder::GolombEncoder(string file_path) {
 }
 
 void GolombEncoder::set_m(int m) {
+	if (m==0) {
+		return;
+	}
 	this->mEnc = m;
 	this->b = ceil(log2(m));
 
@@ -14,6 +20,19 @@ void GolombEncoder::set_m(int m) {
 int GolombEncoder::get_m() {
 	return mEnc;
 
+}
+
+int GolombEncoder::optimal_m(Mat &frame) {
+	double u = 0;
+	Scalar mean_values = mean(abs(frame));
+
+	for (int n = 0; n < frame.channels(); n++)
+		u+=mean_values[n];
+	u /= frame.channels();
+
+	int s = ceil( log2(u) - 0.05 + 0.6/u );
+	s = (0>s)?0:s;
+	return pow(2,s);
 }
 
 void GolombEncoder::encode(int num) {
@@ -56,6 +75,9 @@ GolombDecoder::GolombDecoder(string file_path) {
 }
 
 void GolombDecoder::set_m(int m) {
+	if (m==0) {
+		return;
+	}
 	this->mEnc = m;
 	this->b = ceil(log2(m));
 
