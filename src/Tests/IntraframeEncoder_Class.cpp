@@ -197,7 +197,7 @@ void decode(string encoded_path) {
  */
 int main() {
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();	
-	string encoded = encode("Resources/ducks50.y4m");
+	string encoded = encode("Resources/ducks50.y4m", 3, 5);
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	cout << "Elapsed time: " << std::chrono::duration_cast<std::chrono::seconds>(end - begin).count() << "s" << endl;
 

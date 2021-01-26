@@ -19,11 +19,11 @@
  */
 int main() {
 	string output = "Encoded.bin";
-	VideoCapture video = VideoCapture("Resources/old_town_cross_420_720p50.y4m");
+	VideoCapture video = VideoCapture("Resources/akiyo_cif.y4m");
 
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 	// Encode video
-	HybridEncoder enc(video);
+	HybridEncoder enc(video, "yuv420", 3);
 	enc.encode(output);
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 

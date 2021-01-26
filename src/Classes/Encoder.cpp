@@ -57,6 +57,8 @@ int IntraEncoder::encode(cv::Mat &frame) {
 	int c;
 	/** Error value (predictor - real value). */
 	int err;
+	int pred;
+	int p_val;
 	/** Number of frame channels. */
 	int n_ch = frame.channels();
 	/** Total frame size. */
@@ -73,11 +75,11 @@ int IntraEncoder::encode(cv::Mat &frame) {
 	if (n_ch==3) {
 		hconcat(Mat::zeros(frame.rows, 1, CV_8UC3), frame, image);
 		vconcat(Mat::zeros(1, frame.cols+1, CV_8UC3), image, image);
-		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_32SC3);
+		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_16SC3);
 	} else if (n_ch==1) {
 		hconcat(Mat::zeros(frame.rows, 1, CV_8UC1), frame, image);
 		vconcat(Mat::zeros(1, frame.cols+1, CV_8UC1), image, image);
-		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_32SC1);
+		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_16SC1);
 	}
 
 	for (int i = 1; i < image.rows; i++) {
@@ -88,15 +90,16 @@ int IntraEncoder::encode(cv::Mat &frame) {
 				b = image.ptr<uchar>(i-1, n)[ch];
 				c = image.ptr<uchar>(i-1, n-1)[ch];
 
-				err = image.ptr<uchar>(i, n)[ch] - this->calc_predictor(a,b,c);
-				if (err < 0)
-					err = -1*(abs(err)>>shift);
-				else
-					err >>= shift;
+				pred = this->calc_predictor(a,b,c);
+				err = (image.ptr<uchar>(i, n)[ch] - pred)>>shift;
 
 				// Store Error = estimate - real value.
-				aux_frame.ptr<int>(i-1, n-1)[ch] = err;
+				aux_frame.ptr<short>(i-1, n-1)[ch] = err;
 				
+				err <<= shift;
+
+				image.ptr<uchar>(i, n)[ch] = (unsigned char) pred + err;
+
 			}
 		}
 	}
@@ -115,8 +118,8 @@ int IntraEncoder::encode(cv::Mat &frame) {
 	for (int i = 0; i < aux_frame.rows; i++)
 		for (int n = 0; n < aux_frame.cols; n++)
 			for (int ch = 0; ch < n_ch ; ch++) {
-				frame_cost+=abs(aux_frame.ptr<int>(i, n)[ch]);
-				enc->encode( aux_frame.ptr<int>(i, n)[ch] );
+				frame_cost+=abs(aux_frame.ptr<short>(i, n)[ch]);
+				enc->encode( aux_frame.ptr<short>(i, n)[ch] );
 			}
 
 	 return frame_cost/size;
@@ -196,34 +199,14 @@ int IntraDecoder::decode(Mat &frame) {
 					b = frame.ptr<uchar>(i-1, n)[ch];
 				
 				if (i == 0 || n == 0)
-					c = 0;
+				 	c = 0;
 				else
 					c = frame.ptr<uchar>(i-1, n-1)[ch];
 
 				err = dec->decode();
 				frame_cost += abs(err);
 
-				if (err < 0)
-					err = -1*(abs(err)<<shift);
-				else
-					err <<= shift;
-
-				p_val = this->calc_predictor(a,b,c) + err;
-
-				if (p_val < 0)
-					p_val = abs(p_val);
-				if (p_val > 255)
-					p_val = 255;
-
-				frame.ptr<uchar>(i, n)[ch] = p_val;
-
-				// err = dec->decode();
-				// if (err < 0)
-				// 	p_val = this->calc_predictor(a,b,c) - ( abs(err)<<shift );
-				// else
-				// 	p_val = this->calc_predictor(a,b,c) + (err<<shift);
-				// p_val = (0>p_val) ? abs(p_val) : (255<p_val) ? 255 : p_val;
-				// frame.ptr<uchar>(i, n)[ch] = this->calc_predictor(a,b,c) + p_val;
+				frame.ptr<uchar>(i, n)[ch] = (unsigned char) this->calc_predictor(a,b,c) + (err <<= shift);
 				
 			}
 		}
@@ -281,6 +264,7 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 	int frame_cost = 0;
 	/** Parameter m used for encoding given frame. */
 	int mEnc;
+	int err;
 
 	/** x coordinate of previous frame's block which minimizes error. */
 	int min_x;
@@ -333,8 +317,16 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 			// Encode error between blocks. 
 			for (int i = 0; i < block_size; i++)
 				for (int j = 0; j < block_size; j++)
-					for (int ch = 0; ch < n_ch; ch++)
-						aux_frame.ptr<short>(curr_y+i,curr_x+j)[ch] = min_block_diff.ptr<short>(i,j)[ch];
+					for (int ch = 0; ch < n_ch; ch++) {
+						err = min_block_diff.ptr<short>(i,j)[ch];
+
+						// if ( err<0 )
+						// 	err = -1*(abs(err)>>shift);
+						// else
+							err >>= shift;
+
+						aux_frame.ptr<short>(curr_y+i,curr_x+j)[ch] = 1;
+					}
 		}
 	}
 
@@ -451,8 +443,8 @@ void HybridEncoder::encode(string output_file) {
 	enc.encode(block_range);
 	enc.encode(shift);
 	enc.encode(20);
-	enc.encode(video_n_frames);
-	//enc.encode(10);
+	//enc.encode(video_n_frames);
+	enc.encode(50);
 	int old_frame_cost = 0;
 	int curr_frame_cost = 1;
 	int count = 0;
@@ -527,7 +519,7 @@ void HybridEncoder::encode(string output_file) {
 			break;
 		}
 		case 3: {
-			while (true) {
+			while (count < 50) {
 				video >> curr_frame;
 				if (curr_frame.empty()) {break;};
 				curr_frame = conv.rgb_to_yuv420(curr_frame);
