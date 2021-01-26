@@ -55,19 +55,19 @@ int IntraEncoder::encode(cv::Mat &frame) {
 	int b;
 	/** Diagonally previous color value. */
 	int c;
-
+	/** Error value (predictor - real value). */
 	int err;
-
+	/** Number of frame channels. */
 	int n_ch = frame.channels();
-
+	/** Total frame size. */
 	int size = frame.rows*frame.cols*n_ch;
-
+	/** Parameter m used for encoding the given frame. */
 	int mEnc;
-
+	/** Total frame cost. */
 	int frame_cost = 0;
-
-	// Matrix where the padded frame is stored.
+	/** Matrix where the padded frame is stored. */
 	Mat image;
+	/** Matrix used to store error values. */
 	Mat aux_frame;
 
 	if (n_ch==3) {
@@ -165,12 +165,18 @@ int IntraDecoder::calc_predictor(int a, int b, int c) {
 }
 
 int IntraDecoder::decode(Mat &frame) {
-	int m;
-	unsigned char a, b, c;
-
-	int frame_cost = 0;
+	/** Previous pixel color value. */
+	int a;
+	/** Above pixel color value. */
+	int b;
+	/** Diagonally previous color value. */
+	int c;
+	/** Error value (predictor - real value). */
 	int err;
+	/** Real pixel value. */
 	int p_val;
+	/** Total frame cost. */
+	int frame_cost = 0;
 
 	// Retrieve parameter m
 	dec->set_m(dec->decode());
@@ -253,7 +259,7 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 	Mat min_block_diff;
 	/** Frame that will store error values so they can later be processed and encoded. */
 	Mat aux_frame;
-
+	/** Number of frame channels. */
 	int n_ch = curr_frame.channels();
 
 	if ( n_ch==3 ) {
@@ -264,15 +270,16 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 		aux_frame = Mat::zeros(curr_frame.rows, curr_frame.cols, CV_16SC1);
 	}
 
-
 	/** Sum of matrix that corresponds to the minimum difference between current frame's block
 	 *	and previous frame's block. */
 	int min_diff;
 	/** Absolute value of difference between previous frame's block a current fram'es block. */
 	int min_block_sum;
-
+	/** Total frame size. */
+	int size = curr_frame.rows*curr_frame.cols*curr_frame.channels();
+	/** Total frame cost. */
 	int frame_cost = 0;
-
+	/** Parameter m used for encoding given frame. */
 	int mEnc;
 
 	/** x coordinate of previous frame's block which minimizes error. */
@@ -283,10 +290,11 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 	int max_x = (curr_frame.cols - block_size);
 	/** Max value of y which the sliding block can reach. */
 	int max_y = (curr_frame.rows - block_size);
-
-	int size = curr_frame.rows*curr_frame.cols*curr_frame.channels();
+	/** Block location vector. */
 	int locations[(curr_frame.rows*curr_frame.cols)/(block_size*block_size)*2];
+	/** Current vector position. */
 	int count = 0;
+
 	// Iterate through current frame's blocks.
 	for (int curr_y = 0; curr_y <= max_y; curr_y += block_size) {
 		for (int curr_x = 0; curr_x <= max_x; curr_x += block_size) {
@@ -378,11 +386,9 @@ int InterDecoder::decode(Mat old_frame, Mat &curr_frame) {
 	int old_x;
 	/** y coordinate of previous frame's block which minimizes error. */
 	int old_y;
-
-	int m;
-
+	/** Error value (predictor - real value). */
 	int err;
-
+	/** Total frame cost. */
 	int frame_cost = 0;
 
 	// Retrieve parameter m

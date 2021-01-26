@@ -17,6 +17,7 @@ private:
 	/** Predictor used when encoding frames. */
 	int predictor;
 
+	/** Quantization value used for lossy coding. */
 	int shift;
 
 	/** Pointer to GolombEncoder object used for encoding error values. */
@@ -28,6 +29,7 @@ public:
 	 * 
 	 * 	\param enc Pointer to GolombEncoder object used for encoding error values into a file.
 	 * 	\param predictor Predictor used when calculating error values.
+	 *	\param shift Quantization value used for lossy coding, default value is 0 (Lossless).
 	 */
 	IntraEncoder(GolombEncoder *enc, int predictor, int shift=0);
 
@@ -69,6 +71,7 @@ private:
 	/** Predictor used during video encoding. */
 	int predictor;
 
+	/** Quantization value used for lossy coding. */
 	int shift;
 
 	/** Pointer to GolombDecoder object used for decoding error values. */
@@ -80,6 +83,7 @@ public:
 	 * 
 	 * 	\param dec Pointer to GolombDecoder object used for decoding error values from a file.
 	 * 	\param predictor Predictor used when calculating error values.
+	 *	\param shift Quantization value which was used during coding.
 	 */
 	IntraDecoder(GolombDecoder *dec, int predictor, int shift);
 
@@ -117,9 +121,11 @@ private:
 	 *  blocks with size block_size x block_size.
 	 */
 	int block_size;
+
 	/** Range in which the matching blocks will be searched for in the reference frame. */
 	int block_range;
 
+	/** Quantization value used for lossy coding. */
 	int shift;
 
 	/** Pointer to GolombEncoder object that will be used for encoding the error values into a file. */
@@ -132,6 +138,7 @@ public:
 	 * 	\param enc Pointer to GolombEncoder instance that will be used for encoding error values.
 	 * 	\param block_size Size of search blocks.
 	 * 	\param block_range Block search range.
+	 *	\param shift Quantization value used for lossy coding, fault value is 0 (Lossless).
 	 */
 	InterEncoder(GolombEncoder *enc, int block_size, int block_range, int shift=0);
 
@@ -185,9 +192,11 @@ private:
 	 *  with size block_size x block_size.
 	 */
 	int block_size;
+
 	/** Range in which the matching blocks where searched for in the reference frame. */
 	int block_range;
 
+	/** Quantization value used for lossy coding. */
 	int shift;
 
 	/** GolombDecoder object used for decoding error values from a file. */
@@ -200,6 +209,7 @@ public:
 	 * 	\param enc Pointer to GolombDecoder instance that will be used for decoding error values from a file.
 	 * 	\param block_size Size of search blocks used during encoding.
 	 * 	\param block_range Block search range used during encoding.
+	 *	\param shift Quantization value which was used during coding.
 	 */
 	InterDecoder(GolombDecoder *dec, int block_size, int block_range, int shift);
 
@@ -230,20 +240,29 @@ class HybridEncoder {
 private:
 	/** Video to be encoded. */
 	VideoCapture video;
+
+	/** Format in which the video will be stored. */
 	int format;
+
 	/** Width of the video. */
 	int video_width;
+
 	/** Height of the video. */
 	int video_height;
+
 	/** Number of video frames. */
 	int video_n_frames;
+
 	/** Predictor used in intra-frame encoding. */
 	int predictor;
+
 	/** Block size used in inter-frame encoding. */
 	int block_size;
+
 	/** Block range used in inter-frame encoding. */
 	int block_range;
 
+	/** Quantization value used for lossy coding. */
 	int shift;
 
 public:
@@ -251,6 +270,8 @@ public:
 	 * 	\brief Constructor for HybridEncoder objects.
 	 * 	
 	 * 	\param video Video which will be encoded.
+	 *	\param format Format to which the video be converted before encoding, default is YUV420.
+	 *	\param shift Quantization value used for lossy coding, default value is 0 (Lossless).
 	 */
 	HybridEncoder(VideoCapture video, string format="yuv420", int shift=0);
 
@@ -260,7 +281,6 @@ public:
 	 * 	\param output_file File in which the encoded data will be stored.
 	*/
 	void encode(string output_file);
-	Mat encodeyuv(Mat &img); 
 };
 
 /** \class HybridDecoder
@@ -286,7 +306,6 @@ public:
 	 * 	All necessary properties are read from the encoded file.
 	*/
 	void decode();
-	Mat decodeyuv(Mat &img);
 };
 
 #endif

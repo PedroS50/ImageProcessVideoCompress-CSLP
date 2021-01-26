@@ -1,3 +1,9 @@
+/** \file	IntraframeEncoder_Class.cpp
+ *	\brief	Intraframe encoder which utilizes the IntraframeEncoder classe
+ *	
+ *	File used for showcasing intraframe encoding class, both encode and decode
+ *	methods are used, the encoding time is shown after the entire video is encoded.
+ */
 #include "opencv2/opencv.hpp"
 #include "Golomb.h"
 #include "Encoder.h"
@@ -7,9 +13,20 @@
 
 using namespace cv;
 
+/** \fn encode
+ *	\brief Method used for encoding a video using Intraframe Encoding.
+ *	The chosen video is encoded and written to the file "IntraframeEncoded.bin".
+ *	All necessary information for decoding is stored in the encoded file.
+ *	
+ *	\param video_path Path to the video that will be encoded
+ *	\param format Video format in which the video will be encoded, default is YUV420
+ *	\param shift Shift value used for lossy encoding, default is 0 (Lossless)
+ *	
+ *	\return Path to the encoded file.
+ */
 string encode(string video_path, int format=3, int shift=0) {
 	VideoCapture video = VideoCapture(video_path);
-	string encoded_path = "Encoded.bin";
+	string encoded_path = "IntraframeEncoded.bin";
 	GolombEncoder enc(encoded_path);
 	IntraEncoder intra_enc(&enc, 8, shift);
 	FormatConverter conv;
@@ -97,6 +114,13 @@ string encode(string video_path, int format=3, int shift=0) {
 	return encoded_path;
 }
 
+/** \fn decode
+ *	\brief Method used for decoding a file encoded using Intraframe Encoding.
+ *	The chosen video is read from the file and decoded frame by frame, showing the decoded frame.
+ *	All necessary information for decoding is read from the encoded file.
+ *	
+ *	\param encoded_path Path to the encoded file
+ */
 void decode(string encoded_path) {
 	GolombDecoder dec(encoded_path);
 	FormatConverter conv;
@@ -165,38 +189,17 @@ void decode(string encoded_path) {
 
 }
 
+/**	\fn main
+ *	\brief Main function used to encode and decode a video.
+ *	The chosen video is encoded using the default parameters
+ *	of the encode() method, after fully encoded the elapsed time is shown.
+ *	The encoded file is then decoded.
+ */
 int main() {
-	/*
-	float data[27] = {1,1,2,3,4,5,6,7,8, 1,2,34,5,6,1,6,7,7 ,7,8,9,4,5,6,1,2,3};
-	Mat testMat = Mat::zeros(3, 3, CV_32FC3);
-	int count = 0;
-	
-	for (int ch = 0; ch < 3; ch++) {
-		for (int i = 0; i < 3; i++) {
-			for (int n = 0; n < 3; n++) {
-				testMat.at<Vec3f>(i, n).val[ch] = data[count];
-				count++;
-			}
-		}
-	}
-	cout << testMat << endl;
-	int histSize[3] = {32, 32, 32};
-	float range[] = { -255, 256 }; //the upper boundary is exclusive
-	int channels[3] = {0, 1, 2};
-	Mat hist;
-	const float* histRange[] = { range, range, range };
-	calcHist(&testMat, 1, channels, Mat(), hist, 3, histSize, histRange, true, false);
-	
-	for (MatConstIterator_<double> it = hist.begin<double>(); it != hist.end<double>(); it++) {
-            cout << "Value: " << *it << "\n";
-        }
-	*/
-	
-	
-	string encoded = encode("Resources/ducks50.y4m", 3, 2);
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();	
+	string encoded = encode("Resources/ducks50.y4m");
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	cout << "Elapsed time: " << std::chrono::duration_cast<std::chrono::seconds>(end - begin).count() << "s" << endl;
+
 	decode(encoded);
-	// 50 - 0
-	// 38.7 - 1
-	// 32 - 2
-	// 24.4 - 3
 }

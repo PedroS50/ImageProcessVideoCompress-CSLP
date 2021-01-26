@@ -45,6 +45,14 @@ public:
 	 */
 	int get_m();
 
+	/** \fn optimal_m
+	 *	\brief Method used to calculate the optimal parameter
+	 *	value for Golomb encoding based on a given frame.
+	 *	
+	 *	\param frame Mat object which includes the values used for calculating optimal m.
+	 *	\return Integer representing the optimal m for Golomb encoding.
+	 *
+	 */
 	int optimal_m(Mat &frame);
 
 	/** \brief Method used to encoded a signed int.
@@ -79,7 +87,7 @@ public:
 	/**	\brief Constructor for GolombDecoder class.
 	 * 	\param file_path String containing the path to the file with encoded data.
 	 */
-	GolombDecoder(string path);
+	GolombDecoder(string file_path);
 
 	/** \fn set_m
 	 * 	\brief Set method for property m
