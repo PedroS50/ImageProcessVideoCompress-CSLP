@@ -1,4 +1,4 @@
-# To test Hybrid Encoder:
+# To test Encoders:
 ## 1. Add video file to Resources folder.
 ## 2. Change video name in HybridEncoder.cpp file to the correct one.
 ## 3. $ cd build/ && make && cd -
