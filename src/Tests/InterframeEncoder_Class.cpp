@@ -5,14 +5,14 @@
 #include <getopt.h>
 #include "FormatConverter.h"
 
-string encode(string video_path, int format=3) {
+string encode(string video_path, int format=3, int shift=0) {
 	string encoded_path = "Encoded.bin";
 	VideoCapture video = VideoCapture(video_path);
 	FormatConverter conv;
 
 	GolombEncoder enc(encoded_path);
-	InterEncoder inter_enc(&enc, 32, 5);
-	IntraEncoder intra_enc(&enc, 8);
+	InterEncoder inter_enc(&enc, 32, 5, shift);
+	IntraEncoder intra_enc(&enc, 8, shift);
 
 	Mat curr_frame;
 	Mat old_frame;
@@ -21,6 +21,7 @@ string encode(string video_path, int format=3) {
 	enc.encode(8);
 	enc.encode(32);
 	enc.encode(10);
+	enc.encode(shift);
 	enc.encode(video.get(CAP_PROP_FRAME_COUNT));
 
 	int count = 0;
@@ -118,14 +119,15 @@ void decode(string encoded_path) {
 	int predictor = dec.decode();
 	int block_size = dec.decode();
 	int block_range = dec.decode();
+	int shift = dec.decode();
 	int n_frames = dec.decode();
 	int width = dec.decode();
 	int height = dec.decode();
 	
 	Mat curr_frame;
 	Mat old_frame;
-	IntraDecoder intra_dec(&dec, predictor);
-	InterDecoder inter_dec(&dec, block_size, block_range);
+	IntraDecoder intra_dec(&dec, predictor, shift);
+	InterDecoder inter_dec(&dec, block_size, block_range, shift);
 
 	int count = 1;
 	switch (format) {

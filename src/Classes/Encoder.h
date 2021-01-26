@@ -16,6 +16,9 @@ class IntraEncoder {
 private:
 	/** Predictor used when encoding frames. */
 	int predictor;
+
+	int shift;
+
 	/** Pointer to GolombEncoder object used for encoding error values. */
 	GolombEncoder *enc;
 
@@ -26,7 +29,7 @@ public:
 	 * 	\param enc Pointer to GolombEncoder object used for encoding error values into a file.
 	 * 	\param predictor Predictor used when calculating error values.
 	 */
-	IntraEncoder(GolombEncoder *enc, int predictor);
+	IntraEncoder(GolombEncoder *enc, int predictor, int shift=0);
 
 	/** \fn IntraEncoder
 	 * 	\brief Default constructor for IntraEncoder objects.
@@ -65,6 +68,9 @@ class IntraDecoder {
 private:
 	/** Predictor used during video encoding. */
 	int predictor;
+
+	int shift;
+
 	/** Pointer to GolombDecoder object used for decoding error values. */
 	GolombDecoder *dec;
 
@@ -75,7 +81,7 @@ public:
 	 * 	\param dec Pointer to GolombDecoder object used for decoding error values from a file.
 	 * 	\param predictor Predictor used when calculating error values.
 	 */
-	IntraDecoder(GolombDecoder *dec, int predictor);
+	IntraDecoder(GolombDecoder *dec, int predictor, int shift);
 
 	/** \fn IntraDecoder
 	 * 	\brief Default constructor for IntraDecoder objects.
@@ -113,6 +119,9 @@ private:
 	int block_size;
 	/** Range in which the matching blocks will be searched for in the reference frame. */
 	int block_range;
+
+	int shift;
+
 	/** Pointer to GolombEncoder object that will be used for encoding the error values into a file. */
 	GolombEncoder *enc;
 
@@ -124,7 +133,7 @@ public:
 	 * 	\param block_size Size of search blocks.
 	 * 	\param block_range Block search range.
 	 */
-	InterEncoder(GolombEncoder *enc, int block_size, int block_range);
+	InterEncoder(GolombEncoder *enc, int block_size, int block_range, int shift=0);
 
 	/** \fn InterEncoder 
 	 *	\brief Default constructor for InterEncoder objects.
@@ -178,6 +187,9 @@ private:
 	int block_size;
 	/** Range in which the matching blocks where searched for in the reference frame. */
 	int block_range;
+
+	int shift;
+
 	/** GolombDecoder object used for decoding error values from a file. */
 	GolombDecoder *dec;
 
@@ -189,7 +201,7 @@ public:
 	 * 	\param block_size Size of search blocks used during encoding.
 	 * 	\param block_range Block search range used during encoding.
 	 */
-	InterDecoder(GolombDecoder *dec, int block_size, int block_range);
+	InterDecoder(GolombDecoder *dec, int block_size, int block_range, int shift);
 
 	/** \fn InterDecoder
 	 * 	\brief Default constructor for InterDecoder objects. 
@@ -232,13 +244,15 @@ private:
 	/** Block range used in inter-frame encoding. */
 	int block_range;
 
+	int shift;
+
 public:
 	/** \fn HybridEncoder
 	 * 	\brief Constructor for HybridEncoder objects.
 	 * 	
 	 * 	\param video Video which will be encoded.
 	 */
-	HybridEncoder(VideoCapture video, string format="yuv420");
+	HybridEncoder(VideoCapture video, string format="yuv420", int shift=0);
 
 	/** \fn encode 
 	 * 	\brief Method used to encoded the chosen video using hybrid encoding (inter and intra frame).

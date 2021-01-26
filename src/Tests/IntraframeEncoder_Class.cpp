@@ -7,11 +7,11 @@
 
 using namespace cv;
 
-string encode(string video_path, int format=3) {
+string encode(string video_path, int format=3, int shift=0) {
 	VideoCapture video = VideoCapture(video_path);
 	string encoded_path = "Encoded.bin";
 	GolombEncoder enc(encoded_path);
-	IntraEncoder intra_enc(&enc, 8);
+	IntraEncoder intra_enc(&enc, 8, shift);
 	FormatConverter conv;
 
 	Mat frame;
@@ -19,6 +19,7 @@ string encode(string video_path, int format=3) {
 
 	enc.encode(format);
 	enc.encode(8);
+	enc.encode(shift);
 	enc.encode(video.get(CAP_PROP_FRAME_COUNT));
 
 	int count = 0;
@@ -102,13 +103,14 @@ void decode(string encoded_path) {
 
 	int format = dec.decode();
 	int predictor = dec.decode();
+	int shift = dec.decode();
 	int n_frames = dec.decode();
 	int width = dec.decode();
 	int height = dec.decode();
 	cout << format << endl;
 
 	Mat frame;
-	IntraDecoder intra_dec(&dec, predictor);
+	IntraDecoder intra_dec(&dec, predictor, shift);
 	switch (format) {
 		case 0: {
 			while (n_frames > 0) {
@@ -191,6 +193,10 @@ int main() {
 	*/
 	
 	
-	string encoded = encode("Resources/akiyo_cif.y4m");
+	string encoded = encode("Resources/ducks50.y4m", 3, 2);
 	decode(encoded);
+	// 50 - 0
+	// 38.7 - 1
+	// 32 - 2
+	// 24.4 - 3
 }

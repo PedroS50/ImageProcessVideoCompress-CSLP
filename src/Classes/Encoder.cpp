@@ -2,9 +2,10 @@
 #include "FormatConverter.h"
 #include <unistd.h>
 
-IntraEncoder::IntraEncoder(GolombEncoder *enc, int predictor) {
+IntraEncoder::IntraEncoder(GolombEncoder *enc, int predictor, int shift) {
 	this->predictor = predictor;
 	this->enc = enc;
+	this->shift = shift;
 }
 
 int IntraEncoder::get_predictor() {
@@ -55,6 +56,8 @@ int IntraEncoder::encode(cv::Mat &frame) {
 	/** Diagonally previous color value. */
 	int c;
 
+	int err;
+
 	int n_ch = frame.channels();
 
 	int size = frame.rows*frame.cols*n_ch;
@@ -70,11 +73,11 @@ int IntraEncoder::encode(cv::Mat &frame) {
 	if (n_ch==3) {
 		hconcat(Mat::zeros(frame.rows, 1, CV_8UC3), frame, image);
 		vconcat(Mat::zeros(1, frame.cols+1, CV_8UC3), image, image);
-		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_16SC3);
+		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_32SC3);
 	} else if (n_ch==1) {
 		hconcat(Mat::zeros(frame.rows, 1, CV_8UC1), frame, image);
 		vconcat(Mat::zeros(1, frame.cols+1, CV_8UC1), image, image);
-		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_16SC1);
+		aux_frame = Mat::zeros(frame.rows, frame.cols, CV_32SC1);
 	}
 
 	for (int i = 1; i < image.rows; i++) {
@@ -85,8 +88,15 @@ int IntraEncoder::encode(cv::Mat &frame) {
 				b = image.ptr<uchar>(i-1, n)[ch];
 				c = image.ptr<uchar>(i-1, n-1)[ch];
 
+				err = image.ptr<uchar>(i, n)[ch] - this->calc_predictor(a,b,c);
+				if (err < 0)
+					err = -1*(abs(err)>>shift);
+				else
+					err >>= shift;
+
 				// Store Error = estimate - real value.
-				aux_frame.ptr<short>(i-1, n-1)[ch] = image.ptr<uchar>(i, n)[ch] - this->calc_predictor(a,b,c);
+				aux_frame.ptr<int>(i-1, n-1)[ch] = err;
+				
 			}
 		}
 	}
@@ -105,16 +115,17 @@ int IntraEncoder::encode(cv::Mat &frame) {
 	for (int i = 0; i < aux_frame.rows; i++)
 		for (int n = 0; n < aux_frame.cols; n++)
 			for (int ch = 0; ch < n_ch ; ch++) {
-				frame_cost+=abs(aux_frame.ptr<short>(i, n)[ch]);
-				enc->encode( aux_frame.ptr<short>(i, n)[ch] );
+				frame_cost+=abs(aux_frame.ptr<int>(i, n)[ch]);
+				enc->encode( aux_frame.ptr<int>(i, n)[ch] );
 			}
 
 	 return frame_cost/size;
 }
 
-IntraDecoder::IntraDecoder(GolombDecoder *dec, int predictor) {
+IntraDecoder::IntraDecoder(GolombDecoder *dec, int predictor, int shift) {
 	this->predictor = predictor;
 	this->dec = dec;
+	this->shift = shift;
 }
 
 int IntraDecoder::calc_predictor(int a, int b, int c) {
@@ -159,6 +170,7 @@ int IntraDecoder::decode(Mat &frame) {
 
 	int frame_cost = 0;
 	int err;
+	int p_val;
 
 	// Retrieve parameter m
 	dec->set_m(dec->decode());
@@ -184,7 +196,29 @@ int IntraDecoder::decode(Mat &frame) {
 
 				err = dec->decode();
 				frame_cost += abs(err);
-				frame.ptr<uchar>(i, n)[ch] = this->calc_predictor(a,b,c) + err;
+
+				if (err < 0)
+					err = -1*(abs(err)<<shift);
+				else
+					err <<= shift;
+
+				p_val = this->calc_predictor(a,b,c) + err;
+
+				if (p_val < 0)
+					p_val = abs(p_val);
+				if (p_val > 255)
+					p_val = 255;
+
+				frame.ptr<uchar>(i, n)[ch] = p_val;
+
+				// err = dec->decode();
+				// if (err < 0)
+				// 	p_val = this->calc_predictor(a,b,c) - ( abs(err)<<shift );
+				// else
+				// 	p_val = this->calc_predictor(a,b,c) + (err<<shift);
+				// p_val = (0>p_val) ? abs(p_val) : (255<p_val) ? 255 : p_val;
+				// frame.ptr<uchar>(i, n)[ch] = this->calc_predictor(a,b,c) + p_val;
+				
 			}
 		}
 	}
@@ -192,10 +226,11 @@ int IntraDecoder::decode(Mat &frame) {
 	return frame_cost/(frame.rows*frame.cols*frame.channels());
 }
 
-InterEncoder::InterEncoder(GolombEncoder *enc, int block_size, int block_range) {
+InterEncoder::InterEncoder(GolombEncoder *enc, int block_size, int block_range, int shift) {
 	this->block_size = block_size;
 	this->block_range = block_range;
 	this->enc = enc;
+	this->shift = shift;
 
 }
 
@@ -267,8 +302,6 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 								for (int j = 0; j < block_size; j++)
 									for (int ch = 0; ch < n_ch; ch++)
 										block_diff.ptr<short>(i, j)[ch] = curr_frame.ptr<uchar>(curr_y+i, curr_x+j)[ch] - old_frame.ptr<uchar>(old_y+i, old_x+j)[ch];
-										//block_diff.at<Vec3s>(i,j).val[ch] = pCurrFrameData[curr_frame.channels() * (curr_frame.cols * (curr_y+i) + (curr_x+j)) + ch]-pOldFrameData[old_frame.channels() * (old_frame.cols * (old_y+i) + (old_x+j)) + ch];
-							//min_block_sum = this->cost(block_diff);
 
 							min_block_sum = this->cost(block_diff);
 							if (min_block_sum < min_diff) {
@@ -285,9 +318,7 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 					if (min_diff==0)
 						break;
 				}
-			// Encode blocks coordinates.
-			//enc->encode(min_x);
-			//enc->encode(min_y);
+			// Store blocks coordinates.
 			locations[count++] = min_x;
 			locations[count++] = min_y;
 
@@ -322,14 +353,14 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 						enc->encode(aux_frame.ptr<short>(curr_y+i, curr_x+j)[ch]);
 					}
 		}
-
 	return frame_cost/(curr_frame.rows*curr_frame.cols*n_ch);
 }
 
-InterDecoder::InterDecoder(GolombDecoder *dec, int block_size, int block_range) {
+InterDecoder::InterDecoder(GolombDecoder *dec, int block_size, int block_range, int shift) {
 	this->dec = dec;
 	this->block_size = block_size;
 	this->block_range = block_range;
+	this->shift = shift;
 
 }
 
@@ -375,7 +406,7 @@ int InterDecoder::decode(Mat old_frame, Mat &curr_frame) {
 	return frame_cost/(curr_frame.rows*curr_frame.cols*curr_frame.channels());
 }
 
-HybridEncoder::HybridEncoder(VideoCapture video, string format) {
+HybridEncoder::HybridEncoder(VideoCapture video, string format, int shift) {
 	this->video = video;
 
 	if (!format.compare("rgb"))
@@ -395,14 +426,15 @@ HybridEncoder::HybridEncoder(VideoCapture video, string format) {
 	this->predictor = 8;
 	this->block_size = 16;
 	this->block_range = 7;
+	this->shift = shift;
 }
 
 void HybridEncoder::encode(string output_file) {
 	FormatConverter conv;
 	GolombEncoder enc(output_file);
 
-	IntraEncoder intra_enc(&enc, predictor);
-	InterEncoder inter_enc(&enc, block_size, block_range);
+	IntraEncoder intra_enc(&enc, predictor, shift);
+	InterEncoder inter_enc(&enc, block_size, block_range, shift);
 
 	Mat curr_frame;
 	Mat old_frame;
@@ -411,10 +443,10 @@ void HybridEncoder::encode(string output_file) {
 	enc.encode(predictor);
 	enc.encode(block_size);
 	enc.encode(block_range);
+	enc.encode(shift);
 	enc.encode(20);
-	//enc.encode(50);
 	enc.encode(video_n_frames);
-
+	//enc.encode(10);
 	int old_frame_cost = 0;
 	int curr_frame_cost = 1;
 	int count = 0;
@@ -528,6 +560,7 @@ void HybridDecoder::decode() {
 	int predictor = dec.decode();
 	int block_size = dec.decode();
 	int block_range = dec.decode();
+	int shift = dec.decode();
 	int period = dec.decode();
 	int n_frames = dec.decode();
 	int width = dec.decode();
@@ -538,11 +571,12 @@ void HybridDecoder::decode() {
 	cout << "Predictor: " << predictor << endl;
 	cout << "Block Size: " << block_size << endl;
 	cout << "Block Range: " << block_range << endl;
+	cout << "Shift: " << shift << endl;
 	cout << "Period: " << period << endl;
 	cout << endl;
 
-	IntraDecoder intra_dec(&dec, predictor);
-	InterDecoder inter_dec(&dec, block_size, block_range);
+	IntraDecoder intra_dec(&dec, predictor, shift);
+	InterDecoder inter_dec(&dec, block_size, block_range, shift);
 
 	Mat curr_frame;
 	Mat old_frame;
