@@ -480,34 +480,36 @@ void HybridEncoder::encode(string output_file) {
 			while (true) {
 				video >> curr_frame;
 				if (curr_frame.empty()) {break;};
-
+				
 				if (count==0) {
 					int a = curr_frame.cols;
 					int b = curr_frame.rows;
-
 					if (a!=b){
 						int gcd = -1;
 						while( b!=0 ){
 							a %= b;
 							if( a==0 )
 								gcd = b;
+							break;
 							b %= a;
 						}
 						if (gcd == -1)
 							gcd = a;
-					this->block_size = gcd;
-					inter_enc.set_block_size(gcd);
-					enc.encode(gcd);
+						if (gcd==a || gcd==b)
+							gcd = 16;
+						this->block_size = gcd;
+						inter_enc.set_block_size(gcd);
+						enc.encode(gcd);
 					} else {
 						this->block_size = 16;
 						inter_enc.set_block_size(16);
 						enc.encode(16);
 					}
 
+					
 					enc.encode(curr_frame.cols);
 					enc.encode(curr_frame.rows);
 				}
-
 				if ( curr_frame_cost > old_frame_cost || count%20==0 ) {
 					curr_frame.copyTo(old_frame);
 					curr_frame_cost = intra_enc.encode(curr_frame);
@@ -529,26 +531,29 @@ void HybridEncoder::encode(string output_file) {
 				if (count==0) {
 					int a = curr_frame.cols;
 					int b = curr_frame.rows;
-
 					if (a!=b){
 						int gcd = -1;
 						while( b!=0 ){
 							a %= b;
 							if( a==0 )
 								gcd = b;
+							break;
 							b %= a;
 						}
 						if (gcd == -1)
 							gcd = a;
-					this->block_size = gcd;
-					inter_enc.set_block_size(gcd);
-					enc.encode(gcd);
+						if (gcd==a || gcd==b)
+							gcd = 16;
+						this->block_size = gcd;
+						inter_enc.set_block_size(gcd);
+						enc.encode(gcd);
 					} else {
 						this->block_size = 16;
 						inter_enc.set_block_size(16);
 						enc.encode(16);
 					}
 
+					
 					enc.encode(curr_frame.cols);
 					enc.encode(curr_frame.rows);
 				}
@@ -573,26 +578,29 @@ void HybridEncoder::encode(string output_file) {
 				if (count==0) {
 					int a = curr_frame.cols;
 					int b = curr_frame.rows;
-
 					if (a!=b){
 						int gcd = -1;
 						while( b!=0 ){
 							a %= b;
 							if( a==0 )
 								gcd = b;
+							break;
 							b %= a;
 						}
 						if (gcd == -1)
 							gcd = a;
-					this->block_size = gcd;
-					inter_enc.set_block_size(gcd);
-					enc.encode(gcd);
+						if (gcd==a || gcd==b)
+							gcd = 16;
+						this->block_size = gcd;
+						inter_enc.set_block_size(gcd);
+						enc.encode(gcd);
 					} else {
 						this->block_size = 16;
 						inter_enc.set_block_size(16);
 						enc.encode(16);
 					}
 
+					
 					enc.encode(curr_frame.cols);
 					enc.encode(curr_frame.rows);
 				}
@@ -623,13 +631,16 @@ void HybridEncoder::encode(string output_file) {
 							a %= b;
 							if( a==0 )
 								gcd = b;
+							break;
 							b %= a;
 						}
 						if (gcd == -1)
 							gcd = a;
-					this->block_size = gcd;
-					inter_enc.set_block_size(gcd);
-					enc.encode(gcd);
+						if (gcd==a || gcd==b)
+							gcd = 16;
+						this->block_size = gcd;
+						inter_enc.set_block_size(gcd);
+						enc.encode(gcd);
 					} else {
 						this->block_size = 16;
 						inter_enc.set_block_size(16);
