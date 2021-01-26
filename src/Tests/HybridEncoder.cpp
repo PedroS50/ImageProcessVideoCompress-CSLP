@@ -19,7 +19,7 @@
  */
 int main() {
 	string path = "Resources/";
-	string video_name = "old_town_cross_420_720p50.y4m";
+	string video_name = "akiyo_cif.y4m";
 
 	string output = "Encoded_Video_Hybrid.bin";
 	VideoCapture video = VideoCapture(path + video_name);

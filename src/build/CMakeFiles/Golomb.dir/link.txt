@@ -1,2 +1,0 @@
-/usr/bin/ar qc libGolomb.a  CMakeFiles/Golomb.dir/Classes/Golomb.cpp.o
-/usr/bin/ranlib libGolomb.a
