@@ -1,0 +1,2 @@
+/usr/bin/ar qc libFormatConverter.a  CMakeFiles/FormatConverter.dir/Classes/FormatConverter.cpp.o
+/usr/bin/ranlib libFormatConverter.a
