@@ -34,7 +34,6 @@
 # Additional
 latex/
 build/
-bin/
-Resources/
 EncodingResults/
+ResultsEncoded/
 .vscode/
