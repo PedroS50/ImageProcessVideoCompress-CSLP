@@ -18,7 +18,7 @@ using namespace std;
  *	After encoding is complete, the GolombDecoder object is created
  *	and all numbers are decoded.
  */
-int main( int argc, char** argv) {
+int main() {
 	GolombEncoder enc("EncodedGData.bin");
 
 	enc.set_m(3);

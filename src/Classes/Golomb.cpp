@@ -29,9 +29,11 @@ int GolombEncoder::optimal_m(Mat &frame) {
 	for (int n = 0; n < frame.channels(); n++)
 		u+=mean_values[n];
 	u /= frame.channels();
-
+	if (u < 0.01)
+		return 2;
 	int s = ceil( log2(u) - 0.05 + 0.6/u );
-	s = (0>s)?0:s;
+
+	s = (0>s) ? 0:s;
 	return pow(2,s);
 }
 

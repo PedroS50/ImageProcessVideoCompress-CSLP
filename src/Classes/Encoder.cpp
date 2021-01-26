@@ -57,8 +57,8 @@ int IntraEncoder::encode(cv::Mat &frame) {
 	int c;
 	/** Error value (predictor - real value). */
 	int err;
+	/** Predictor value. */
 	int pred;
-	int p_val;
 	/** Number of frame channels. */
 	int n_ch = frame.channels();
 	/** Total frame size. */
@@ -91,12 +91,20 @@ int IntraEncoder::encode(cv::Mat &frame) {
 				c = image.ptr<uchar>(i-1, n-1)[ch];
 
 				pred = this->calc_predictor(a,b,c);
-				err = (image.ptr<uchar>(i, n)[ch] - pred)>>shift;
+				err = image.ptr<uchar>(i, n)[ch] - pred;
+
+				if (err < 0)
+					err = -1*(abs(err)>>shift);
+				else
+					err >>= shift;
 
 				// Store Error = estimate - real value.
 				aux_frame.ptr<short>(i-1, n-1)[ch] = err;
 				
-				err <<= shift;
+				if (err < 0)
+					err = -1*(abs(err)<<shift);
+				else
+					err <<= shift;
 
 				image.ptr<uchar>(i, n)[ch] = (unsigned char) pred + err;
 
@@ -176,8 +184,6 @@ int IntraDecoder::decode(Mat &frame) {
 	int c;
 	/** Error value (predictor - real value). */
 	int err;
-	/** Real pixel value. */
-	int p_val;
 	/** Total frame cost. */
 	int frame_cost = 0;
 
@@ -206,7 +212,12 @@ int IntraDecoder::decode(Mat &frame) {
 				err = dec->decode();
 				frame_cost += abs(err);
 
-				frame.ptr<uchar>(i, n)[ch] = (unsigned char) this->calc_predictor(a,b,c) + (err <<= shift);
+				if (err < 0)
+					err = -1*(abs(err)<<shift);
+				else
+					err <<= shift;
+
+				frame.ptr<uchar>(i, n)[ch] = (unsigned char) this->calc_predictor(a,b,c) + err;
 				
 			}
 		}
@@ -225,6 +236,10 @@ InterEncoder::InterEncoder(GolombEncoder *enc, int block_size, int block_range, 
 
 int InterEncoder::get_block_size() {
 	return block_size;
+}
+
+void InterEncoder::set_block_size(int size) {
+	block_size = size;
 }
 
 int InterEncoder::get_block_range() {
@@ -258,12 +273,11 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 	int min_diff;
 	/** Absolute value of difference between previous frame's block a current fram'es block. */
 	int min_block_sum;
-	/** Total frame size. */
-	int size = curr_frame.rows*curr_frame.cols*curr_frame.channels();
 	/** Total frame cost. */
 	int frame_cost = 0;
 	/** Parameter m used for encoding given frame. */
 	int mEnc;
+	/** Error value (predictor - real value). */
 	int err;
 
 	/** x coordinate of previous frame's block which minimizes error. */
@@ -284,16 +298,18 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 		for (int curr_x = 0; curr_x <= max_x; curr_x += block_size) {
 			min_diff = 10000000;
 
+			Mat curr = Mat(curr_frame, Rect(curr_x, curr_y, block_size, block_size));
 			// Iterate through previous frame's blocks
 			for (int old_y = ( (curr_y-block_range < 0) ? 0 : (curr_y-block_range) );
 				old_y <= ( (curr_y+block_range >= max_y) ? max_y : (curr_y+block_range) ); old_y++) {
 					for (int old_x = ( (curr_x-block_range < 0) ? 0 : (curr_x-block_range) );
 						old_x <= ( (curr_x+block_range >= max_x) ? max_x : (curr_x+block_range) ); old_x++) {
-
-							for (int i = 0; i < block_size; i++)
-								for (int j = 0; j < block_size; j++)
-									for (int ch = 0; ch < n_ch; ch++)
-										block_diff.ptr<short>(i, j)[ch] = curr_frame.ptr<uchar>(curr_y+i, curr_x+j)[ch] - old_frame.ptr<uchar>(old_y+i, old_x+j)[ch];
+							Mat old = Mat(old_frame, Rect(old_x, old_y, block_size, block_size));
+							
+							if (n_ch==1)
+								subtract(curr, old, block_diff, noArray(), CV_16SC1);
+							else if (n_ch==3)
+								subtract(curr, old, block_diff, noArray(), CV_16SC3);
 
 							min_block_sum = this->cost(block_diff);
 							if (min_block_sum < min_diff) {
@@ -302,31 +318,22 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 								block_diff.copyTo(min_block_diff);
 								min_diff = min_block_sum;
 								// If the difference between blocks is 0, no need to keep searching.
-								if (min_diff==0)
+								if (min_diff<1000)
 									break;
 							}
 					}
 					// If the difference between blocks is 0, no need to keep searching.
-					if (min_diff==0)
+					if (min_diff<1000)
 						break;
 				}
 			// Store blocks coordinates.
 			locations[count++] = min_x;
 			locations[count++] = min_y;
 
-			// Encode error between blocks. 
-			for (int i = 0; i < block_size; i++)
-				for (int j = 0; j < block_size; j++)
-					for (int ch = 0; ch < n_ch; ch++) {
-						err = min_block_diff.ptr<short>(i,j)[ch];
-
-						// if ( err<0 )
-						// 	err = -1*(abs(err)>>shift);
-						// else
-							err >>= shift;
-
-						aux_frame.ptr<short>(curr_y+i,curr_x+j)[ch] = 1;
-					}
+			// Store error between blocks
+			Rect rect(curr_x, curr_y, block_size, block_size);
+			min_block_diff.copyTo(aux_frame(rect)); 
+			
 		}
 	}
 
@@ -342,15 +349,31 @@ int InterEncoder::encode(Mat old_frame, Mat curr_frame) {
 	}
 
 	count = 0;
+
 	for (int curr_y = 0; curr_y <= max_y; curr_y += block_size)
 		for (int curr_x = 0; curr_x <= max_x; curr_x += block_size) {
 			enc->encode(locations[count++]);
 			enc->encode(locations[count++]);
-			for (int i = 0; i < block_size; i++)
-				for (int j = 0; j < block_size; j++)
+			for (int i = curr_y; i < curr_y+block_size; i++)
+				for (int j = curr_x; j < curr_x+block_size; j++)
 					for (int ch = 0; ch < n_ch; ch++) {
-						frame_cost+=abs(aux_frame.ptr<short>(curr_y+i, curr_x+j)[ch]);
-						enc->encode(aux_frame.ptr<short>(curr_y+i, curr_x+j)[ch]);
+						err = aux_frame.ptr<short>(i, j)[ch];
+
+						if (err < 0)
+							err = -1*(abs(err)>>shift);
+						else
+							err >>= shift;
+
+						enc->encode(err);
+						frame_cost+=abs(err);
+
+						if (err < 0)
+							err = -1*(abs(err)<<shift);
+						else
+							err <<= shift;
+
+						curr_frame.ptr<uchar>(i, j)[ch] = err + old_frame.ptr<uchar>(i, j)[ch];
+
 					}
 		}
 	return frame_cost/(curr_frame.rows*curr_frame.cols*n_ch);
@@ -396,6 +419,12 @@ int InterDecoder::decode(Mat old_frame, Mat &curr_frame) {
 					for (int ch = 0; ch < curr_frame.channels(); ch++) {
 						err = dec->decode();
 						frame_cost+=abs(err);
+						if (err < 0)
+							err = -1*(abs(err)<<shift);
+						else
+							err <<= shift;
+
+								
 						curr_frame.ptr<uchar>(i, j)[ch] = old_frame.ptr<uchar>(old_y+i-curr_y, old_x+j-curr_x)[ch] + err;
 					}
 		}
@@ -422,8 +451,7 @@ HybridEncoder::HybridEncoder(VideoCapture video, string format, int shift) {
 
 	// Calculate optimal parameters...
 	this->predictor = 8;
-	this->block_size = 16;
-	this->block_range = 7;
+	this->block_range = 5;
 	this->shift = shift;
 }
 
@@ -439,12 +467,11 @@ void HybridEncoder::encode(string output_file) {
 	
 	enc.encode(format);
 	enc.encode(predictor);
-	enc.encode(block_size);
 	enc.encode(block_range);
 	enc.encode(shift);
 	enc.encode(20);
-	//enc.encode(video_n_frames);
-	enc.encode(50);
+	enc.encode(video_n_frames);
+
 	int old_frame_cost = 0;
 	int curr_frame_cost = 1;
 	int count = 0;
@@ -455,12 +482,33 @@ void HybridEncoder::encode(string output_file) {
 				if (curr_frame.empty()) {break;};
 
 				if (count==0) {
+					int a = curr_frame.cols;
+					int b = curr_frame.rows;
+
+					if (a!=b){
+						int gcd = -1;
+						while( b!=0 ){
+							a %= b;
+							if( a==0 )
+								gcd = b;
+							b %= a;
+						}
+						if (gcd == -1)
+							gcd = a;
+					this->block_size = gcd;
+					inter_enc.set_block_size(gcd);
+					enc.encode(gcd);
+					} else {
+						this->block_size = 16;
+						inter_enc.set_block_size(16);
+						enc.encode(16);
+					}
+
 					enc.encode(curr_frame.cols);
 					enc.encode(curr_frame.rows);
 				}
 
 				if ( curr_frame_cost > old_frame_cost || count%20==0 ) {
-					cout << "Intra!" << endl;
 					curr_frame.copyTo(old_frame);
 					curr_frame_cost = intra_enc.encode(curr_frame);
 					old_frame_cost = curr_frame_cost;
@@ -479,12 +527,33 @@ void HybridEncoder::encode(string output_file) {
 				curr_frame = conv.rgb_to_yuv444(curr_frame);
 
 				if (count==0) {
+					int a = curr_frame.cols;
+					int b = curr_frame.rows;
+
+					if (a!=b){
+						int gcd = -1;
+						while( b!=0 ){
+							a %= b;
+							if( a==0 )
+								gcd = b;
+							b %= a;
+						}
+						if (gcd == -1)
+							gcd = a;
+					this->block_size = gcd;
+					inter_enc.set_block_size(gcd);
+					enc.encode(gcd);
+					} else {
+						this->block_size = 16;
+						inter_enc.set_block_size(16);
+						enc.encode(16);
+					}
+
 					enc.encode(curr_frame.cols);
 					enc.encode(curr_frame.rows);
 				}
 
 				if ( curr_frame_cost > old_frame_cost || count%20==0 ) {
-					cout << "Intra!" << endl;
 					curr_frame.copyTo(old_frame);
 					curr_frame_cost = intra_enc.encode(curr_frame);
 					old_frame_cost = curr_frame_cost;
@@ -502,12 +571,33 @@ void HybridEncoder::encode(string output_file) {
 				curr_frame = conv.rgb_to_yuv422(curr_frame);
 
 				if (count==0) {
+					int a = curr_frame.cols;
+					int b = curr_frame.rows;
+
+					if (a!=b){
+						int gcd = -1;
+						while( b!=0 ){
+							a %= b;
+							if( a==0 )
+								gcd = b;
+							b %= a;
+						}
+						if (gcd == -1)
+							gcd = a;
+					this->block_size = gcd;
+					inter_enc.set_block_size(gcd);
+					enc.encode(gcd);
+					} else {
+						this->block_size = 16;
+						inter_enc.set_block_size(16);
+						enc.encode(16);
+					}
+
 					enc.encode(curr_frame.cols);
 					enc.encode(curr_frame.rows);
 				}
 
 				if ( curr_frame_cost > old_frame_cost || count%20==0 ) {
-					cout << "Intra!" << endl;
 					curr_frame.copyTo(old_frame);
 					curr_frame_cost = intra_enc.encode(curr_frame);
 					old_frame_cost = curr_frame_cost;
@@ -519,18 +609,39 @@ void HybridEncoder::encode(string output_file) {
 			break;
 		}
 		case 3: {
-			while (count < 50) {
+			while (true) {
 				video >> curr_frame;
 				if (curr_frame.empty()) {break;};
 				curr_frame = conv.rgb_to_yuv420(curr_frame);
 
 				if (count==0) {
+					int a = curr_frame.cols;
+					int b = curr_frame.rows;
+					if (a!=b){
+						int gcd = -1;
+						while( b!=0 ){
+							a %= b;
+							if( a==0 )
+								gcd = b;
+							b %= a;
+						}
+						if (gcd == -1)
+							gcd = a;
+					this->block_size = gcd;
+					inter_enc.set_block_size(gcd);
+					enc.encode(gcd);
+					} else {
+						this->block_size = 16;
+						inter_enc.set_block_size(16);
+						enc.encode(16);
+					}
+
+					
 					enc.encode(curr_frame.cols);
 					enc.encode(curr_frame.rows);
 				}
 
 				if ( curr_frame_cost > old_frame_cost || count%20==0 ) {
-					cout << "Intra!" << endl;
 					curr_frame.copyTo(old_frame);
 					curr_frame_cost = intra_enc.encode(curr_frame);
 					old_frame_cost = curr_frame_cost;
@@ -556,11 +667,11 @@ void HybridDecoder::decode() {
 	
 	int format = dec.decode();
 	int predictor = dec.decode();
-	int block_size = dec.decode();
 	int block_range = dec.decode();
 	int shift = dec.decode();
 	int period = dec.decode();
 	int n_frames = dec.decode();
+	int block_size = dec.decode();
 	int width = dec.decode();
 	int height = dec.decode();
 
@@ -588,7 +699,6 @@ void HybridDecoder::decode() {
 				curr_frame = Mat::zeros(height, width, CV_8UC3);
 
 				if ( curr_frame_cost > old_frame_cost || count%period==0 ) {
-					cout << "Intra!" << endl;
 					curr_frame_cost = intra_dec.decode(curr_frame);
 					old_frame_cost = curr_frame_cost;
 					curr_frame.copyTo(old_frame);
@@ -607,7 +717,6 @@ void HybridDecoder::decode() {
 				curr_frame = Mat::zeros(height, width, CV_8UC3);
 
 				if ( curr_frame_cost > old_frame_cost || count%period==0 ) {
-					cout << "Intra!" << endl;
 					curr_frame_cost = intra_dec.decode(curr_frame);
 					old_frame_cost = curr_frame_cost;
 					curr_frame.copyTo(old_frame);
@@ -626,7 +735,6 @@ void HybridDecoder::decode() {
 				curr_frame = Mat::zeros(height, width, CV_8UC1);
 
 				if ( curr_frame_cost > old_frame_cost || count%period==0 ) {
-					cout << "Intra!" << endl;
 					curr_frame_cost = intra_dec.decode(curr_frame);
 					old_frame_cost = curr_frame_cost;
 					curr_frame.copyTo(old_frame);
@@ -645,7 +753,6 @@ void HybridDecoder::decode() {
 				curr_frame = Mat::zeros(height, width, CV_8UC1);
 
 				if ( curr_frame_cost > old_frame_cost || count%period==0 ) {
-					cout << "Intra!" << endl;
 					curr_frame_cost = intra_dec.decode(curr_frame);
 					old_frame_cost = curr_frame_cost;
 					curr_frame.copyTo(old_frame);

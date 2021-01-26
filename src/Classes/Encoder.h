@@ -154,6 +154,13 @@ public:
 	 */
 	int get_block_size();
 
+	/** \fn set_block_size
+	 * 	\brief Set method for block_size property.
+	 * 
+	 * 	\param size Block size.
+	 */
+	void set_block_size(int size);
+
 	/** \fn get_block_range
 	 * 	\brief Get method for block_range property.
 	 * 

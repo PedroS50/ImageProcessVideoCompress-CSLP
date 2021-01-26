@@ -21,7 +21,7 @@ using namespace std;
  *	The BitStream object is then set to read mode and all the numbers
  *	and bits are read.
  */
-int main( int argc, char** argv) {
+int main() {
 	BitStream bs;
 
 	bs.setToWrite("EncodedBSData.bin");
